@@ -25,11 +25,15 @@ endif
 
 PROGRAM = i3blocks
 
+UNAME_S:= $(shell uname -s)
 CPPFLAGS += -DSYSCONFDIR=\"$(SYSCONFDIR)\"
 CPPFLAGS += -DVERSION=\"${VERSION}\"
+ifeq ($(UNAME_S),FreeBSD)
+	CPPFLAGS += -DFREEBSD
+endif
 CFLAGS += -std=gnu99 -Iinclude -Wall -Werror=format-security
 
-OBJS := $(sort $(wildcard src/*.c))
+OBJS := $(sort $(wildcard src/*.c)) $(sort $(wildcard src/platform/$(UNAME_S)/*.c))
 OBJS := $(OBJS:.c=.o)
 
 %.o: %.c %.h
