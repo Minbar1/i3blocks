@@ -22,4 +22,7 @@
 int sched_init(struct bar *);
 void sched_start(struct bar *);
 
+#ifdef FREEBSD /* int kqueue required */
+int io_signal(int , int)
+#endif
 #endif /* _SCHED_H */
