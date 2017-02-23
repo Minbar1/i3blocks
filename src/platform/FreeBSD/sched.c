@@ -24,14 +24,18 @@
 #include <sys/time.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <sys/event.h>
 
+#include "io.h"
 #include "bar.h"
 #include "block.h"
-#include "io.h"
 #include "json.h"
 #include "log.h"
 
-static sigset_t sigset;
+/* static sigset_t sigset; */
+
+static sigset_t siglist;
+int kqueue_fd;
 
 static int
 gcd(int a, int b)
@@ -54,7 +58,7 @@ longest_sleep(struct bar *bar)
 		return time;
 
 	/* The maximum sleep time is actually the GCD between all block intervals */
-	for (int i = 1; i < bar->num; ++i)
+	for (unsigned int i = 1; i < bar->num; ++i)
 		if ((bar->blocks + i)->interval > 0)
 			time = gcd(time, (bar->blocks + i)->interval);
 
@@ -71,71 +75,104 @@ setup_timer(struct bar *bar)
 		return 0;
 	}
 
-	struct itimerval itv = {
-		.it_value.tv_sec = sleeptime,
-		.it_interval.tv_sec = sleeptime,
-	};
+  struct kevent timer_event;
 
-	if (setitimer(ITIMER_REAL, &itv, NULL) == -1) {
-		errorx("setitimer");
-		return 1;
-	}
-
+  EV_SET(&timer_event, 0x01, EVFILT_TIMER, EV_ADD, NOTE_SECONDS, sleeptime, NULL);
+  if (kevent(kqueue_fd, &timer_event, 1, NULL, 0 , NULL) < 0){
+    errorx("kevent timer %d ", (int)timer_event.ident);
+    return 1;
+  }
 	debug("starting timer with interval of %d seconds", sleeptime);
 	return 0;
 }
 
 static int
+add_signal(int sig)
+{
+  struct kevent signal_fd;
+
+  EV_SET(&signal_fd, sig, EVFILT_SIGNAL, EV_ADD, 0, 0, NULL);
+
+	if (sigaddset(&siglist, sig) == -1){
+    errorx("sigaddset(%d)", sig);
+    return 1;
+  }
+
+  if (kevent(kqueue_fd, &signal_fd, 1, NULL, 0, NULL) < 0) {
+    errorx("kqueue_signal(%d)", sig);
+    return 1;
+  }
+  return 0;
+}
+
+static int
 setup_signals(void)
 {
-	if (sigemptyset(&sigset) == -1) {
+
+	if (sigemptyset(&siglist) == -1) {
 		errorx("sigemptyset");
 		return 1;
 	}
 
-#define ADD_SIG(_sig) \
-	if (sigaddset(&sigset, _sig) == -1) { errorx("sigaddset(%d)", _sig); return 1; }
 
 	/* Control signals */
-	ADD_SIG(SIGTERM);
-	ADD_SIG(SIGINT);
-
-	/* Timer signal */
-	ADD_SIG(SIGALRM);
+	add_signal(SIGTERM);
+	add_signal(SIGINT);
 
 	/* Block updates (forks) */
-	ADD_SIG(SIGCHLD);
+	add_signal(SIGCHLD);
 
 	/* Deprecated signals */
-	ADD_SIG(SIGUSR1);
-	ADD_SIG(SIGUSR2);
+	add_signal(SIGUSR1);
+	add_signal(SIGUSR2);
 
 	/* Click signal */
-	ADD_SIG(SIGIO);
-
-	/* I/O Possible signal for persistent blocks */
-	ADD_SIG(SIGRTMIN);
+	add_signal(SIGIO);
 
 	/* Real-time signals for blocks */
 	for (int sig = SIGRTMIN + 1; sig <= SIGRTMAX; ++sig) {
 		debug("provide signal %d (%s)", sig, strsignal(sig));
-		ADD_SIG(sig);
+		add_signal(sig);
 	}
 
-#undef ADD_SIG
-
-	/* Block signals for which we are interested in waiting */
-	if (sigprocmask(SIG_SETMASK, &sigset, NULL) == -1) {
-		errorx("sigprocmask");
-		return 1;
-	}
+  /* Block signals for which we are interested in waiting */
+  if (sigprocmask(SIG_SETMASK, &siglist, NULL) == -1) {
+  errorx("sigprocmask");
+  return 1;
+  }
 
 	return 0;
+}
+
+
+/*
+  NOTE: Parameter sig is here to match the signature for all platform
+ */
+int
+io_signal(int fd, int sig)
+{
+struct kevent fd_event;
+
+/* register kevent */
+/* i don't need signals to register io */
+
+EV_SET(&fd_event, fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, NULL);
+
+if (kevent(kqueue_fd, &fd_event, 1, NULL, 0, NULL) < 0){
+/* TODO: make sure all errors are included */
+errorx("kevent %d", kqueue_fd);
+return -1;
+}
+
+return 0;
 }
 
 int
 sched_init(struct bar *bar)
 {
+  if ((kqueue_fd = kqueue()) < 0)
+    errorx("kqueue_fd)");
+
 	if (setup_signals())
 		return 1;
 
@@ -144,7 +181,7 @@ sched_init(struct bar *bar)
 
 	/* Setup event I/O for stdin (clicks) */
 	if (!isatty(STDIN_FILENO))
-		if (io_signal(STDIN_FILENO, SIGIO))
+		if (io_signal(STDIN_FILENO, 0))
 			return 1;
 
 	return 0;
@@ -153,9 +190,9 @@ sched_init(struct bar *bar)
 void
 sched_start(struct bar *bar)
 {
-	siginfo_t siginfo;
-	int sig;
 
+  struct kevent recv;
+  int ret;
 	/*
 	 * Initial display (for static blocks and loading labels),
 	 * and first forks (for commands with an interval).
@@ -164,55 +201,63 @@ sched_start(struct bar *bar)
 	bar_poll_timed(bar);
 
 	while (1) {
-		sig = sigwaitinfo(&sigset, &siginfo);
-		if (sig == -1) {
+
+    ret = kevent(kqueue_fd, NULL, 0, &recv, 1, NULL);
+		if (ret == -1) {
 			/* Hiding the bar may interrupt this system call */
 			if (errno == EINTR)
 				continue;
 
-			errorx("sigwaitinfo");
+			errorx("kevent");
 			break;
 		}
 
-		debug("received signal %d (%s)", sig, strsignal(sig));
+    switch(recv.filter){
 
-		if (sig == SIGTERM || sig == SIGINT)
-			break;
+    case EVFILT_SIGNAL:
+      debug("kqueue event %d (%s)received (EVFILT_SIGNAL)", (int)recv.ident,
+            strsignal(recv.ident));
 
-		/* Interval tick? */
-		if (sig == SIGALRM) {
+      if (recv.ident == SIGTERM || recv.ident == SIGINT){
+        break;
+      } else if(recv.ident == SIGCHLD) {
+        /* Child(ren) dead? */
+        bar_poll_exited(bar);
+        json_print_bar(bar);
+      } else if (recv.ident == SIGIO) {
+        /* Block clicked? */
+        bar_poll_clicked(bar);
+      } else if (recv.ident > SIGRTMIN && recv.ident <= SIGRTMAX) {
+        /* Blocks signaled? */
+        bar_poll_signaled(bar, recv.ident - SIGRTMIN);
+      } else if (recv.ident == SIGUSR1 || recv.ident == SIGUSR2) {
+        /* Deprecated signals? */
+        error("SIGUSR{1,2} are deprecated, ignoring.");
+      }
+      break;
+
+    case EVFILT_READ:
+      /* Persistent block ready to be read? */
+      debug("kqueue event %d received (EVFILT_READ)", (int)recv.ident);
+			bar_poll_readable(bar, recv.ident);
+			json_print_bar(bar);
+      break;
+
+    case EVFILT_TIMER:
+      debug("kqueue event %d received (EVFILT_TIMER)", (int)recv.ident);
 			bar_poll_outdated(bar);
+      break;
 
-		/* Child(ren) dead? */
-		} else if (sig == SIGCHLD) {
-			bar_poll_exited(bar);
-			json_print_bar(bar);
-
-		/* Block clicked? */
-		} else if (sig == SIGIO) {
-			bar_poll_clicked(bar);
-
-		/* Persistent block ready to be read? */
-		} else if (sig == SIGRTMIN) {
-			bar_poll_readable(bar, siginfo.si_fd);
-			json_print_bar(bar);
-
-		/* Blocks signaled? */
-		} else if (sig > SIGRTMIN && sig <= SIGRTMAX) {
-			bar_poll_signaled(bar, sig - SIGRTMIN);
-
-		/* Deprecated signals? */
-		} else if (sig == SIGUSR1 || sig == SIGUSR2) {
-			error("SIGUSR{1,2} are deprecated, ignoring.");
-
-		} else debug("unhandled signal %d", sig);
-	}
+    default:
+      errorx("unknown kevent received");
+    }
+  }
 
 	/*
 	 * Unblock signals (so subsequent syscall can be interrupted)
 	 * and wait for child processes termination.
 	 */
-	if (sigprocmask(SIG_UNBLOCK, &sigset, NULL) == -1)
+	if (sigprocmask(SIG_UNBLOCK, &siglist, NULL) == -1)
 		errorx("sigprocmask");
 	while (waitpid(-1, NULL, 0) > 0)
 		continue;

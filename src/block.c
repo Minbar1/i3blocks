@@ -32,6 +32,10 @@
 #include "json.h"
 #include "log.h"
 
+#ifdef FREEBSD /*io_signal*/
+#include "sched.h"
+#endif
+
 static void
 child_setenv(struct block *block, const char *name, const char *value)
 {
