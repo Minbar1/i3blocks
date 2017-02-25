@@ -1,0 +1,77 @@
+#!/bin/sh
+# Copyright (C) 2014 Julien Bonjean <julien@bonjean.info>
+# Copyright (C) 2014 Alexander Keller <github@nycroth.com>
+# Copyright (C) 2017 Thierry Ghelew <tlux@ghelew.net>
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+#------------------------------------------------------------------------
+
+# NOTE: This script has been tested only with sound devices
+# installed in kernelspace
+
+# The first parameter sets the step to change the volume by
+STEP="${1:-5}"
+
+# The second parameter sets the MUTE label
+MUTE="${2:-MUTE}"
+
+# Name of the mixer to control.
+# Generally it's one of:
+#vol ,pcm ,speaker ,line ,mic ,mix ,rec ,igain ,ogain
+MIXER=${BLOCK_INSTANCE:-vol}
+#------------------------------------------------------------------------
+
+mixer_level() {
+    mixer -S $1 | awk -F : '{print $2}'
+}
+
+
+# mute input device: + to unmute; - to mute
+mute() {
+    local sign=${1:-+}
+    mixer pcm ${sign}100 2>/dev/null
+}
+
+# mute default input channel pcm
+mute_toggle() {
+    if [ `mixer_level pcm` -ge 100 ]; then
+       mute -
+    else
+       mute +
+    fi
+}
+
+volume() {
+  mixer -S ${MIXER} | awk -F : -v pcm_level=`mixer_level pcm` -v mute=$MUTE '{
+    if ( pcm_level <= 0 )
+       print mute
+    else
+    if ($2 != $3)
+       printf("[%s:%s]", $2, $3)
+    else
+       printf("%s",$2)
+
+  }'
+}
+
+#------------------------------------------------------------------------
+
+case $BLOCK_BUTTON in
+  3) mute_toggle ;;  # right click, mute/unmute
+  4) mute +; mixer $MIXER +${STEP};; # scroll up, increase
+  5) mute +; mixer $MIXER -${STEP};; # scroll down, decrease
+esac
+
+volume
