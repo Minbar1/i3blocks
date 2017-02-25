@@ -65,7 +65,7 @@ install: all
 	install -m 755 $(PROGRAM) $(DESTDIR)$(PREFIX)/bin/$(PROGRAM)
 	sed 's,$$SCRIPT_DIR,$(LIBEXECDIR)/$(PROGRAM),' $(PROGRAM).conf > $(DESTDIR)$(SYSCONFDIR)/$(PROGRAM).conf
 	chmod 644 $(DESTDIR)$(SYSCONFDIR)/$(PROGRAM).conf
-	install -m 755 scripts/* $(DESTDIR)$(LIBEXECDIR)/$(PROGRAM)/
+	install -m 755 scripts/$(UNAME_S)/* $(DESTDIR)$(LIBEXECDIR)/$(PROGRAM)/
 
 install-man: man
 	install -m 755 -d $(DESTDIR)$(DATAROOTDIR)/man/man1
