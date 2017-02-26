@@ -42,7 +42,7 @@ sub help {
 }
 
 GetOptions("help|h" => \&help,
-           "s!"     => \$use_short,
+           "s"     => \$use_short,
            "w=i"    => \$t_warn,
            "d=i"    => \$decimals,
 );
