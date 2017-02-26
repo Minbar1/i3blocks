@@ -1,0 +1,91 @@
+#!/usr/bin/env perl
+#
+# Copyright 2014 Pierre Mavro <deimos@deimos.fr>
+# Copyright 2014 Vivien Didelot <vivien@didelot.org>
+# Copyright 2014 Andreas Guldstrand <andreas.guldstrand@gmail.com>
+# Copyright 2017 Thierry Ghelew <tlux@ghelew.net>
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#------------------------------------------------------------------------
+
+use strict;
+use warnings;
+use utf8;
+use Getopt::Long;
+
+# default values
+my $t_warn = 90;
+my $decimals = 1;
+my $use_short=0;
+
+# return variable
+my @cpu_usage;
+my $avg_cpu_usage;
+
+sub help {
+    print "Usage: cpu_usage [-s] [-w <warning>] [-d <decimals>]\n";
+    print "-s: print the average usage of all cpus\n";
+    print "-w <percent>: warning threshold to become red\n";
+    print "-d <decimals>:  Use <decimals> decimals for percentage (default is $decimals) \n";
+    exit 0;
+}
+
+GetOptions("help|h" => \&help,
+           "s!"     => \$use_short,
+           "w=i"    => \$t_warn,
+           "d=i"    => \$decimals,
+);
+
+sub average{
+    return @_ ? (eval join '+', @_) / @_ : 0;
+}
+
+# Get CPU usage
+open (VMSTAT, 'vmstat -P -p proc |') or die;
+my @cpu_index;
+foreach my $line (<VMSTAT>) {
+    chomp $line;
+    my @arr_line = split /\s+/, $line;
+    if ($line =~ /.*\bid\b.*/) {
+        # get index of idle columns
+        @cpu_index = grep { $arr_line[$_] eq "id" } 0..$#arr_line;
+    }
+    elsif ($line =~ /^[\d\s\.KMGT]+$/) {
+        # get usage per cpu 100 - idle
+        map { push @cpu_usage, 100 - $arr_line[$_] } @cpu_index;
+    }
+}
+close(VMSTAT);
+undef @cpu_index;
+
+$#cpu_usage <= 0 and die "Can\'t get cpu usage";
+
+$avg_cpu_usage = average(@cpu_usage);
+
+if ($use_short) {
+    printf "%.${decimals}f%%\n", $avg_cpu_usage;
+} else {
+    map {printf "%.${decimals}f%% ", $_} @cpu_usage;
+    printf "\n";
+}
+# Print short_text, full_text
+printf "%.${decimals}f%%\n", $avg_cpu_usage;
+
+# Print color, if needed
+if ($avg_cpu_usage >= $t_warn) {
+    print "#FF0000\n";
+    exit 33;
+}
+
+exit 0;
