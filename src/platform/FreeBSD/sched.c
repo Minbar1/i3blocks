@@ -212,15 +212,19 @@ sched_start(struct bar *bar)
 			break;
 		}
 
+    /* quit? */
+    if (recv.filter == EVFILT_SIGNAL &&
+        (recv.ident == SIGTERM || recv.ident == SIGINT)){
+      debug("kqueue interrupt or terminate");
+      break;
+    }
+
     switch(recv.filter){
 
     case EVFILT_SIGNAL:
       debug("kqueue event %d (%s)received (EVFILT_SIGNAL)", (int)recv.ident,
             strsignal(recv.ident));
-
-      if (recv.ident == SIGTERM || recv.ident == SIGINT){
-        break;
-      } else if(recv.ident == SIGCHLD) {
+      if(recv.ident == SIGCHLD) {
         /* Child(ren) dead? */
         bar_poll_exited(bar);
         json_print_bar(bar);
