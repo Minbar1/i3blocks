@@ -41,7 +41,7 @@ mixer_level() {
 # mute input device: + to unmute; - to mute
 mute() {
     local sign=${1:-+}
-    mixer pcm ${sign}100 2>/dev/null
+    mixer pcm ${sign}100 >/dev/null 2>&1
 }
 
 # mute default input channel pcm
@@ -70,8 +70,8 @@ volume() {
 
 case $BLOCK_BUTTON in
   3) mute_toggle ;;  # right click, mute/unmute
-  4) mute +; mixer $MIXER +${STEP};; # scroll up, increase
-  5) mute +; mixer $MIXER -${STEP};; # scroll down, decrease
+  4) mute +; mixer $MIXER +${STEP} >/dev/null 2>&1 ;; # scroll up, increase
+  5) mute +; mixer $MIXER -${STEP} >/dev/null 2>&1 ;; # scroll down, decrease
 esac
 
 volume
