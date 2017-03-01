@@ -1,0 +1,111 @@
+#!/usr/bin/env perl
+# Copyright (C) 2017 Thierry Ghelew <tlux@ghelew.net>
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#------------------------------------------------------------------------
+use strict;
+use warnings;
+use Getopt::Long;
+
+# default values
+my $t_swap = 0;
+my $t_decimal = 0;
+
+# return variable
+my $mem_total = 1;
+my $mem_used = 0;
+my $mem_pct = 0;
+
+sub help {
+    print "Usage: memory [-s] [-d <decimals>]\n";
+    print "-s: print swap info";
+    print "-d <decimal>: Use <decimals> decimal for memory output\n";
+    exit 0;
+}
+
+# copied from:
+# https://www.cyberciti.biz/files/scripts/freebsd-memory.pl.txt
+#
+# round the physical memory size to the next power of two which is
+# reasonable for memory cards. We do this by first determining the
+# guessed memory card size under the assumption that usual computer
+# hardware has an average of a maximally eight memory cards installed
+# and those are usually of equal size.
+sub mem_rounded {
+    my ($mem_size) = @_;
+    my $chip_size  = 1;
+    my $chip_guess = ($mem_size / 8) - 1;
+    while ($chip_guess != 0) {
+              $chip_guess >>= 1;
+              $chip_size  <<= 1;
+          }
+          my $mem_round = (int($mem_size / $chip_size) + 1) * $chip_size;
+          return $mem_round;
+}
+
+sub format_mem {
+    my ($size, $si, $decimal) = (shift, 0, shift);
+    while ($size > 1024) {
+        ++$si;
+        $size /= 1024;
+    }
+    return sprintf "%.${decimal}f%s", $size, (qw[ B KiB MiB GiB TiB PiB ])[$si];
+}
+#------------------------------------------------------------------------
+GetOptions("help|h" => \&help,
+           "d=i"    => \$t_decimal,
+           "s"      => \$t_swap,
+    );
+
+if ($t_swap){
+    my $swap_enabled = `/sbin/sysctl -n vm.swap_enabled`;
+    # do we have swap ?
+    if (!$swap_enabled){
+        print "N/A\n";
+        exit 0;
+    }
+   # get swap info
+    my $swap_info = `/usr/sbin/pstat -T`;
+    if ($swap_info =~ m/^.*([0-9]+)M\/([0-9]+)M\s+swap.*$/s ){
+        $mem_used = $1 * 1024 * 1024;  # MiB >> Bytes
+        $mem_total = $2 * 1024 * 1024; # MiB >> Bytes
+    }
+} else {
+   # get memory info
+    my $sys_hw_physmem = `/sbin/sysctl -n hw.physmem`;
+    my $sys_hw_pagesize = `/sbin/sysctl -n hw.pagesize`;
+    my $sys_vm_v_active_count = `/sbin/sysctl -n vm.stats.vm.v_active_count` *
+        $sys_hw_pagesize;
+    my $sys_vm_v_cache_count = `/sbin/sysctl -n vm.stats.vm.v_cache_count` *
+        $sys_hw_pagesize;
+    my $sys_vm_v_free_count = `/sbin/sysctl -n vm.stats.vm.v_free_count`   *
+        $sys_hw_pagesize;
+    $mem_total = &mem_rounded($sys_hw_physmem);
+    $mem_used  = $mem_total - $sys_vm_v_active_count -
+        $sys_vm_v_cache_count - $sys_vm_v_free_count;
+}
+$mem_total == 0 and die "memory cannot be read";
+$mem_pct = $mem_used / $mem_total * 100;
+
+# full text
+printf "%s / %s (%.f%%)\n", &format_mem($mem_used, $t_decimal),
+    &format_mem($mem_total, $t_decimal), $mem_pct;
+# short text
+printf "%.f%%\n", $mem_pct;
+
+if ($mem_pct > 90) {
+    print "#FF0000\n";
+    exit 33;
+}
+exit 0;
