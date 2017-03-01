@@ -69,20 +69,22 @@ static int
 setup_timer(struct bar *bar)
 {
 	const unsigned sleeptime = longest_sleep(bar);
+  struct kevent timer_event;
 
 	if (!sleeptime) {
 		debug("no timer needed");
 		return 0;
 	}
 
-  struct kevent timer_event;
+  EV_SET(&timer_event, 0x01, EVFILT_TIMER, EV_ADD, NOTE_SECONDS,
+         sleeptime, NULL);
 
-  EV_SET(&timer_event, 0x01, EVFILT_TIMER, EV_ADD, NOTE_SECONDS, sleeptime, NULL);
   if (kevent(kqueue_fd, &timer_event, 1, NULL, 0 , NULL) < 0){
     errorx("kevent timer %d ", (int)timer_event.ident);
     return 1;
   }
 	debug("starting timer with interval of %d seconds", sleeptime);
+
 	return 0;
 }
 
@@ -91,17 +93,18 @@ add_signal(int sig)
 {
   struct kevent signal_fd;
 
-  EV_SET(&signal_fd, sig, EVFILT_SIGNAL, EV_ADD, 0, 0, NULL);
-
 	if (sigaddset(&siglist, sig) == -1){
     errorx("sigaddset(%d)", sig);
     return 1;
   }
 
+  EV_SET(&signal_fd, sig, EVFILT_SIGNAL, EV_ADD, 0, 0, NULL);
+
   if (kevent(kqueue_fd, &signal_fd, 1, NULL, 0, NULL) < 0) {
     errorx("kqueue_signal(%d)", sig);
     return 1;
   }
+
   return 0;
 }
 
@@ -144,22 +147,38 @@ setup_signals(void)
 	return 0;
 }
 
-
 /*
-  NOTE: Parameter sig is here to match the signature for all platform
+  NOTE: Parameter {sig} is here to match the signature for all platforms
  */
 int
 io_signal(int fd, int sig)
 {
 struct kevent fd_event;
+ int flags;
+
+/* Set owner process that is to receive "I/O possible" signal */
+ if (fcntl(fd, F_SETOWN, getpid()) == -1) {
+   errorx("failed to set process as owner of fd %d", fd);
+   return 1;
+ }
+
+ flags = fcntl(fd, F_GETFL);
+ if (flags == -1) {
+   errorx("failed to get flags of fd %d", fd);
+   return 1;
+ }
+
+ /* Enable "I/O possible" signaling and make I/O nonblocking */
+ if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
+   errorx("failed to enable I/O signaling for fd %d", fd);
+   return 1;
+ }
 
 /* register kevent */
-/* i don't need signals to register io */
-
-EV_SET(&fd_event, fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, NULL);
+/* we don't need signals to register io */
+EV_SET(&fd_event, fd, EVFILT_READ, EV_ADD, 0, 0, NULL);
 
 if (kevent(kqueue_fd, &fd_event, 1, NULL, 0, NULL) < 0){
-/* TODO: make sure all errors are included */
 errorx("kevent %d", kqueue_fd);
 return -1;
 }
@@ -215,7 +234,7 @@ sched_start(struct bar *bar)
     /* quit? */
     if (recv.filter == EVFILT_SIGNAL &&
         (recv.ident == SIGTERM || recv.ident == SIGINT)){
-      debug("kqueue interrupt or terminate");
+      debug("kqueue event interrupt or terminate");
       break;
     }
 
@@ -228,9 +247,6 @@ sched_start(struct bar *bar)
         /* Child(ren) dead? */
         bar_poll_exited(bar);
         json_print_bar(bar);
-      } else if (recv.ident == SIGIO) {
-        /* Block clicked? */
-        bar_poll_clicked(bar);
       } else if (recv.ident > SIGRTMIN && recv.ident <= SIGRTMAX) {
         /* Blocks signaled? */
         bar_poll_signaled(bar, recv.ident - SIGRTMIN);
@@ -243,8 +259,13 @@ sched_start(struct bar *bar)
     case EVFILT_READ:
       /* Persistent block ready to be read? */
       debug("kqueue event %d received (EVFILT_READ)", (int)recv.ident);
-			bar_poll_readable(bar, recv.ident);
-			json_print_bar(bar);
+      if (recv.ident == STDIN_FILENO) {
+        /* Block clicked? */
+        bar_poll_clicked(bar);
+      }else{
+        bar_poll_readable(bar, recv.ident);
+        json_print_bar(bar);
+      }
       break;
 
     case EVFILT_TIMER:
