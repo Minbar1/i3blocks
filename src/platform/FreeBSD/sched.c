@@ -1,6 +1,6 @@
 /*
  * sched.c - scheduling of block updates (timeout, signal or click)
- * Copyright (C) 2014  Vivien Didelot
+ * Copyright (C) 2014	 Vivien Didelot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -9,11 +9,11 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.	 If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <errno.h>
@@ -69,20 +69,20 @@ static int
 setup_timer(struct bar *bar)
 {
 	const unsigned sleeptime = longest_sleep(bar);
-  struct kevent timer_event;
+	struct kevent timer_event;
 
 	if (!sleeptime) {
 		debug("no timer needed");
 		return 0;
 	}
 
-  EV_SET(&timer_event, 0x01, EVFILT_TIMER, EV_ADD, NOTE_SECONDS,
-         sleeptime, NULL);
+	EV_SET(&timer_event, 0x01, EVFILT_TIMER, EV_ADD, NOTE_SECONDS,
+				 sleeptime, NULL);
 
-  if (kevent(kqueue_fd, &timer_event, 1, NULL, 0 , NULL) < 0){
-    errorx("kevent timer %d ", (int)timer_event.ident);
-    return 1;
-  }
+	if (kevent(kqueue_fd, &timer_event, 1, NULL, 0 , NULL) < 0){
+		errorx("kevent timer %d ", (int)timer_event.ident);
+		return 1;
+	}
 	debug("starting timer with interval of %d seconds", sleeptime);
 
 	return 0;
@@ -91,21 +91,21 @@ setup_timer(struct bar *bar)
 static int
 add_signal(int sig)
 {
-  struct kevent signal_fd;
+	struct kevent signal_fd;
 
 	if (sigaddset(&siglist, sig) == -1){
-    errorx("sigaddset(%d)", sig);
-    return 1;
-  }
+		errorx("sigaddset(%d)", sig);
+		return 1;
+	}
 
-  EV_SET(&signal_fd, sig, EVFILT_SIGNAL, EV_ADD, 0, 0, NULL);
+	EV_SET(&signal_fd, sig, EVFILT_SIGNAL, EV_ADD, 0, 0, NULL);
 
-  if (kevent(kqueue_fd, &signal_fd, 1, NULL, 0, NULL) < 0) {
-    errorx("kqueue_signal(%d)", sig);
-    return 1;
-  }
+	if (kevent(kqueue_fd, &signal_fd, 1, NULL, 0, NULL) < 0) {
+		errorx("kqueue_signal(%d)", sig);
+		return 1;
+	}
 
-  return 0;
+	return 0;
 }
 
 static int
@@ -138,59 +138,59 @@ setup_signals(void)
 		add_signal(sig);
 	}
 
-  /* Block signals for which we are interested in waiting */
-  if (sigprocmask(SIG_SETMASK, &siglist, NULL) == -1) {
-  errorx("sigprocmask");
-  return 1;
-  }
+	/* Block signals for which we are interested in waiting */
+	if (sigprocmask(SIG_SETMASK, &siglist, NULL) == -1) {
+		errorx("sigprocmask");
+		return 1;
+	}
 
 	return 0;
 }
 
 /*
-  NOTE: Parameter {sig} is here to match the signature for all platforms
- */
+	NOTE: Parameter {sig} is here to match the signature for all platforms
+*/
 int
 io_signal(int fd, int sig)
 {
-struct kevent fd_event;
- int flags;
+	struct kevent fd_event;
+	int flags;
 
-/* Set owner process that is to receive "I/O possible" signal */
- if (fcntl(fd, F_SETOWN, getpid()) == -1) {
-   errorx("failed to set process as owner of fd %d", fd);
-   return 1;
- }
+	/* Set owner process that is to receive "I/O possible" signal */
+	if (fcntl(fd, F_SETOWN, getpid()) == -1) {
+		errorx("failed to set process as owner of fd %d", fd);
+		return 1;
+	}
 
- flags = fcntl(fd, F_GETFL);
- if (flags == -1) {
-   errorx("failed to get flags of fd %d", fd);
-   return 1;
- }
+	flags = fcntl(fd, F_GETFL);
+	if (flags == -1) {
+		errorx("failed to get flags of fd %d", fd);
+		return 1;
+	}
 
- /* Enable "I/O possible" signaling and make I/O nonblocking */
- if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
-   errorx("failed to enable I/O signaling for fd %d", fd);
-   return 1;
- }
+	/* Enable "I/O possible" signaling and make I/O nonblocking */
+	if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
+		errorx("failed to enable I/O signaling for fd %d", fd);
+		return 1;
+	}
 
-/* register kevent */
-/* we don't need signals to register io */
-EV_SET(&fd_event, fd, EVFILT_READ, EV_ADD, 0, 0, NULL);
+	/* register kevent */
+	/* we don't need signals to register io */
+	EV_SET(&fd_event, fd, EVFILT_READ, EV_ADD, 0, 0, NULL);
 
-if (kevent(kqueue_fd, &fd_event, 1, NULL, 0, NULL) < 0){
-errorx("kevent %d", kqueue_fd);
-return -1;
-}
+	if (kevent(kqueue_fd, &fd_event, 1, NULL, 0, NULL) < 0){
+		errorx("kevent %d", kqueue_fd);
+		return -1;
+	}
 
-return 0;
+	return 0;
 }
 
 int
 sched_init(struct bar *bar)
 {
-  if ((kqueue_fd = kqueue()) < 0)
-    errorx("kqueue_fd)");
+	if ((kqueue_fd = kqueue()) < 0)
+		errorx("kqueue_fd)");
 
 	if (setup_signals())
 		return 1;
@@ -210,8 +210,8 @@ void
 sched_start(struct bar *bar)
 {
 
-  struct kevent recv;
-  int ret;
+	struct kevent recv;
+	int ret;
 	/*
 	 * Initial display (for static blocks and loading labels),
 	 * and first forks (for commands with an interval).
@@ -221,7 +221,7 @@ sched_start(struct bar *bar)
 
 	while (1) {
 
-    ret = kevent(kqueue_fd, NULL, 0, &recv, 1, NULL);
+		ret = kevent(kqueue_fd, NULL, 0, &recv, 1, NULL);
 		if (ret == -1) {
 			/* Hiding the bar may interrupt this system call */
 			if (errno == EINTR)
@@ -231,52 +231,52 @@ sched_start(struct bar *bar)
 			break;
 		}
 
-    /* quit? */
-    if (recv.filter == EVFILT_SIGNAL &&
-        (recv.ident == SIGTERM || recv.ident == SIGINT)){
-      debug("kqueue event interrupt or terminate");
-      break;
-    }
+		/* quit? */
+		if (recv.filter == EVFILT_SIGNAL &&
+				(recv.ident == SIGTERM || recv.ident == SIGINT)){
+			debug("kqueue event interrupt or terminate");
+			break;
+		}
 
-    switch(recv.filter){
+		switch(recv.filter){
 
-    case EVFILT_SIGNAL:
-      debug("kqueue event %d (%s)received (EVFILT_SIGNAL)", (int)recv.ident,
-            strsignal(recv.ident));
-      if(recv.ident == SIGCHLD) {
-        /* Child(ren) dead? */
-        bar_poll_exited(bar);
-        json_print_bar(bar);
-      } else if (recv.ident > SIGRTMIN && recv.ident <= SIGRTMAX) {
-        /* Blocks signaled? */
-        bar_poll_signaled(bar, recv.ident - SIGRTMIN);
-      } else if (recv.ident == SIGUSR1 || recv.ident == SIGUSR2) {
-        /* Deprecated signals? */
-        error("SIGUSR{1,2} are deprecated, ignoring.");
-      }
-      break;
+		case EVFILT_SIGNAL:
+			debug("kqueue event %d (%s)received (EVFILT_SIGNAL)", (int)recv.ident,
+						strsignal(recv.ident));
+			if(recv.ident == SIGCHLD) {
+				/* Child(ren) dead? */
+				bar_poll_exited(bar);
+				json_print_bar(bar);
+			} else if (recv.ident > SIGRTMIN && recv.ident <= SIGRTMAX) {
+				/* Blocks signaled? */
+				bar_poll_signaled(bar, recv.ident - SIGRTMIN);
+			} else if (recv.ident == SIGUSR1 || recv.ident == SIGUSR2) {
+				/* Deprecated signals? */
+				error("SIGUSR{1,2} are deprecated, ignoring.");
+			}
+			break;
 
-    case EVFILT_READ:
-      /* Persistent block ready to be read? */
-      debug("kqueue event %d received (EVFILT_READ)", (int)recv.ident);
-      if (recv.ident == STDIN_FILENO) {
-        /* Block clicked? */
-        bar_poll_clicked(bar);
-      }else{
-        bar_poll_readable(bar, recv.ident);
-        json_print_bar(bar);
-      }
-      break;
+		case EVFILT_READ:
+			/* Persistent block ready to be read? */
+			debug("kqueue event %d received (EVFILT_READ)", (int)recv.ident);
+			if (recv.ident == STDIN_FILENO) {
+				/* Block clicked? */
+				bar_poll_clicked(bar);
+			}else{
+				bar_poll_readable(bar, recv.ident);
+				json_print_bar(bar);
+			}
+			break;
 
-    case EVFILT_TIMER:
-      debug("kqueue event %d received (EVFILT_TIMER)", (int)recv.ident);
+		case EVFILT_TIMER:
+			debug("kqueue event %d received (EVFILT_TIMER)", (int)recv.ident);
 			bar_poll_outdated(bar);
-      break;
+			break;
 
-    default:
-      errorx("unknown kevent received");
-    }
-  }
+		default:
+			errorx("unknown kevent received");
+		}
+	}
 
 	/*
 	 * Unblock signals (so subsequent syscall can be interrupted)
