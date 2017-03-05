@@ -1,0 +1,354 @@
+.\"_
+. \" i3block.1  - manual
+.
+. \" Copyright (C) 2017  Thierry Ghelew <tlux@ghelew.net>
+.
+. \" This program is free software: you can redistribute it and/or modify
+. \" it under the terms of the GNU General Public License as published by
+. \" the Free Software Foundation, either version 3 of the License, or
+. \" (at your option) any later version.
+.
+. \" This program is distributed in the hope that it will be useful,
+. \" but WITHOUT ANY WARRANTY; without even the implied warranty of
+. \" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+. \" GNU General Public License for more details.
+.
+. \" You should have received a copy of the GNU General Public License
+. \" along with this program.  If not, see <http://www.gnu.org/licenses/>.
+.\"_
+.Dd March 04, 2017
+.Dt I3BLOCKS 1
+.Os
+.Sh NAME
+.Nm i3blocks
+.Nd A flexible scheduler for your
+.Xr i3bar 1
+blocks.
+.Sh SYNOPSIS
+.Nm
+.Op Fl c Ar configfile
+.Op Fl v
+.Ar ...
+.Op Fl h
+.Op Fl V
+.Sh DESCRIPTION
+.Nm
+allows one to easily describe blocks in a simple format,
+and generate a status line for
+.Xr i3bar 1 .
+It handles clicks, signals and time interval for user scripts.
+.Ss OPTIONS
+.Bl -tag -width indent
+.It Fl c Aq configfile
+.Pp
+Specifies an alternate configuration file path. By default,
+.Nm
+looks for configuration files in the following order
+.Po note that
+.Pa /etc
+may be prefixed with
+.Pa /usr/local
+depending on the compilation flags
+.Pc
+:
+.Bl -enum
+.It
+.Pa ~/.config/i3blocks/config
+.Pp
+.Po or
+.Pa $XDG_CONFIG_HOME/i3blocks/config if set
+.Pc
+.It
+.Pa ~/.i3blocks.conf
+.It
+.Pa /etc/xdg/i3blocks/config
+.Pp
+.Po or
+.Pa $XDG_CONFIG_DIRS/i3blocks/config if set
+.Pc
+.It
+.Pa /etc/i3blocks.conf
+.El
+.It Fl v
+Log level. This option is cumulative. By default, error messages are displayed
+on stderr. Passed once, a failure during an update is shown within the block.
+Passed twice enables the debug messages on stderr.
+.It Fl V
+Print the version and exit.
+.It Fl h
+Print the help message and exit.
+.El
+.Ss CONFIGURATION
+The configuration file is an ini file. Each section describes a new block. A
+line beginning with a
+.Ar #
+sign is a comment, and empty lines are ignored. A property is a
+.Ar key Ns = Ns Ar value
+pair per line, with no space around the equal sign.
+Properties declared outside a block
+.Pq i.e. at the beginning of the file
+describe global settings.
+Here is an example config file:
+.Bd -literal -offset indent
+# This is a comment
+interval=5
+color=#00FF00
+
+[weather]
+command=~/bin/weather.pl
+interval=1800
+
+[time]
+command=date +%T
+.Ed
+.Pp
+To use
+.Nm
+as your status line, define it in a
+.Em bar
+block of your
+.Pa ~/i3/config
+file:
+.Bd -literal -offset indent
+bar {
+.Bk
+  status_command
+.Nm
+.Ek
+}
+.Ed
+.Ss BLOCK
+The properties used to describe a block are the keys specified in the
+.Xr i3bar 1
+protocol
+.Lk http://i3wm.org/docs/i3bar-protocol.html,
+plus additional properties used by
+.Nm
+to describe when and how to update a block. All the supported
+properties are described below. The following keys are standard, see
+.Lk http://i3wm.org/docs/i3bar-protocol.html
+for details.
+.Bl -bullet -offset indent
+.It
+.Li full_text
+.It
+.Li short_text
+.It
+.Li color
+.It
+.Li background
+.It
+.Li border
+.It
+.Li min_width
+.It
+.Li align
+.It
+.Li name
+.It
+.Li instance
+.It
+.Li urgent
+.It
+.Li separator
+.It
+.Li separator_block_width
+.It
+.Li markup
+.El
+.Pp
+The following keys are specific to
+.Nm Ns :
+.Bl -tag -width indent
+.It Li command
+The command executed by a shell, used to update the block. The expected
+behavior is described below, in the
+.Sx COMMAND
+section.
+.It Li interval
+If it is a positive integer, then the block is spawned on startup and the
+value is used as a time interval in seconds to schedule future updates.
+.Pp
+If unspecified or
+.Ar 0
+, the block won't be executed on startup
+.Pq which is useful to simulate buttons Ns .
+.Pp
+If
+.Qo
+.Ar once | -1
+.Qc
+, the block will be executed only on startup
+.Pq note that a click or signal will still trigger an update .
+.Pp
+If
+.Qo
+.Ar repeat | -2
+.Qc
+, the block will be spawned on startup, and as soon as
+it terminates
+.Pq useful to repeat blocking commands .
+.Bk -words
+.Sy Use with caution!
+.Ek
+.Pp
+If
+.Qo
+.Ar persist | -3
+.Qc
+, the block will be executed only on startup, and
+updated as soon as it outputs a line. Thus limited to single line updates.
+.It Li signal
+The signal number used to update the block. All the real-time
+.Pq think prioritized and queueable signals are available to the user.
+The number is valid between
+.Li 1 and N
+, where
+.Li SIGRTMIN+N = SIGRTMAX.
+.Po
+Note: there are 31 real-time signals in Linux
+and 60 in
+.Fx
+.Pc
+For instance,
+.Li signal=10
+means that this block will be updated when
+.Nm
+receives
+.Li SIGRTMIN+10.
+.It Li label
+An optional label to prepend to the
+.Li full_text
+after an update.
+.It Li format
+This property specifies the format of the output text. The default format
+is plain text, as described in the
+.Sx COMMAND
+section.
+If
+.Qo
+.Ar json | 1
+.Qc
+is used, the block output is parsed as JSON.
+.El
+.Ss COMMAND
+The value of the
+.Li command
+key will be passed and executed as is by a shell.
+The standard output of the command line is used to update the block content.
+Each non-empty line of the output will overwrite the corresponding property:
+.Bl -enum -offset indent
+.It
+full_text
+.It
+short_text
+.It
+color
+.El
+.Pp
+For example, this script prints the battery percentage and sets the urgent flag
+if it is below 10%:
+.Bd -literal -offset indent
+BAT=`acpi -b | grep -E -o '[0-9][0-9]?%'`
+echo "BAT: $BAT"
+test ${BAT%?} -le 10 && exit 33 || exit 0
+.Ed
+.Pp
+When forking a block command,
+.Nm
+will set the environment with some
+.Li BLOCK_*
+variables. The following variables are always provided, with
+eventually an empty string as the value.
+.Bl -tag -width indent -offset indent
+.It Li BLOCK_NAME
+The name of the block
+.Pq usually the section name.
+.It Li BLOCK_INSTANCE
+An optional argument to the script.
+.It Li BLOCK_BUTTON
+Mouse button
+.Pq i.e:1, 2 or 3
+if the block was cliked.
+.It Li BLOCK_X and BLOCK_Y
+Coordinates where the click occured, if the block was clicked.
+.El
+.Pp
+Here is an example using the environment:
+.Bd -literal -offset indent
+[block]
+command=echo name=$BLOCK_NAME instance=$BLOCK_INSTANCE
+interval=1
+
+[clickme]
+full_text=Click me!
+command=echo button=$BLOCK_BUTTON x=$BLOCK_X y=$BLOCK_Y
+min_width=button=1 x=1366 y=768
+align=left
+.Ed
+.Pp
+Note that
+.Nm
+provides a set of optional scripts for convenience, such
+as network status, battery check, cpu load, volume, etc.
+.Sh EXAMPLES
+As an example, here is a close configuration to
+.Xr i3status 1
+default settings:
+.Bd -literal -offset indent
+command=~/bin/blocks/$BLOCK_NAME
+interval=5
+signal=10
+
+[free]
+[wifi]
+[ethernet]
+[battery]
+[cpu]
+[datetime]
+.Ed
+.Pp
+The following block shows the usage of
+.Li signal with some
+.Xr i3 1
+bindings which adjust the volume,
+before issuing a
+.Li pkill -RTMIN+1
+.Nm Ns :
+.Bd -literal -offset indent
+[volume]
+command=echo -n 'Volume: '; amixer get Master | grep -E -o '[0-9][0-9]?%'
+interval=once
+signal=1
+# no interval, only check on SIGRTMIN+1
+.Ed
+.Sh SEE ALSO
+The development of
+.Nm
+takes place on
+.Lk https://github.com/vivien/i3blocks Github
+.Pp
+The
+.Lk https://github.com/vivien/i3blocks/wiki wiki
+is a good source of examples for blocks and screenshots.
+.Pp
+.Xr i3 1 ,
+.Xr i3bar 1 ,
+.Xr i3status 1
+.Sh AUTHORS
+.An Vivien Didelot and contributors
+.Sh BUGS
+.Ss Reporting Bugs
+Please reports bugs on the
+.Lk https://github.com/vivien/i3blocks/issues "issue tracker"
+.Ss Known Bugs
+None.
+.Sh COPYRIGHT
+.Bk -words
+Copyright
+.Pq C
+2014 Vivien Didelot
+.Aq Mt vivien.didelot@gmail.com .
+.Ek
+.Pp
+License GPLV3+: GNU GPL version 3 or later http://gnu.org/licenses/gpl.html .
