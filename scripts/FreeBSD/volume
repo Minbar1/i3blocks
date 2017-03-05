@@ -27,6 +27,9 @@ STEP="${1:-5}"
 # The second parameter sets the MUTE label
 MUTE="${2:-MUTE}"
 
+# The third parameter sets the mixer label
+MLABEL="${3}"
+
 # Name of the mixer to control.
 # Generally it's one of:
 #vol ,pcm ,speaker ,line ,mic ,mix ,rec ,igain ,ogain
@@ -54,14 +57,14 @@ mute_toggle() {
 }
 
 volume() {
-  mixer -S ${MIXER} | awk -F : -v pcm_level=`mixer_level pcm` -v mute=$MUTE '{
+  mixer -S ${MIXER} | awk -F : -v mlabel=${MLABEL} -v pcm_level=`mixer_level pcm` -v mute=${MUTE} '{
     if ( pcm_level <= 0 )
        print mute
     else
     if ($2 != $3)
-       printf("[%s:%s]", $2, $3)
+       printf("%s [%s:%s]",mlabel, $2, $3)
     else
-       printf("%s",$2)
+       printf("%s %s",mlabel,$2)
 
   }'
 }
