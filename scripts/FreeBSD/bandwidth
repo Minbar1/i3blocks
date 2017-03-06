@@ -1,0 +1,126 @@
+#!/usr/bin/env perl
+# Copyright (C) 2017 Thierry Ghelew <tlux@ghelew.net>
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#------------------------------------------------------------------------
+use strict;
+use warnings;
+use Getopt::Long;
+use File::Basename;
+
+# input values
+my $t_input_label = 'IN';
+my $t_output_label = 'OUT';
+my $t_interface = $ENV{'BLOCK_INSTANCE'};
+my $t_tmpdir = $ENV{'TMPDIR'};
+my $t_path = "";
+
+# return value
+my @rate = (-1, -1);
+
+sub help {
+    print "Usage: bandwidth [-i <input label>] [-o <output label>]";
+    print "-i <input label>: Use <input label> for bandwidth input label";
+    print "-o <output label>: Use <output label> for bandwidth output label";
+    exit 0;
+}
+
+# format output
+sub format_size {
+    my ($size, $si, $decimal) = (shift, 0, shift);
+    while ($size > 1024) {
+        ++$si;
+        $size /= 1024;
+    }
+    return sprintf "%.${decimal}f%s", $size, (qw[ B KiB MiB GiB TiB PiB ])[$si];
+}
+#------------------------------------------------------------------------
+GetOptions("help|h" => \&help,
+           "i=s"    => \$t_input_label,
+           "o=s"    => \$t_output_label
+    );
+
+if (!$t_interface){
+    $t_interface = `ifconfig -lu | cut -d' ' -f1`;
+}
+
+if (!$t_interface){
+    printf "%s N/A %s N/A\n", $t_input_label, $t_output_label;
+    exit 33
+}
+
+if (!$t_tmpdir){
+    $t_tmpdir = "/tmp";
+}
+
+my $basename = basename $0, "\.[^.]*";
+chomp ($t_path = sprintf "%s/%s-%s", $t_tmpdir, $basename ,$t_interface);
+
+# Get rx_bytes and tx_bytes
+open NETSTAT, "netstat -bn -I $t_interface |" or die;
+my @rx_tx;
+my @indexes;
+foreach my $line (<NETSTAT>) {
+    chomp $line;
+    my @arr_line = split /\s+/, $line;
+    if ($line =~ /.*\bName\b.*/){
+        # Get indexes
+        #we assume Ibytes = $arr_line[x]
+        # Obytes = $arr_line[y] with x < y and x,y > 0
+        @indexes = grep { $arr_line[$_] =~ "[IO]bytes"} 0..$#arr_line;
+    }
+    elsif ($line =~ /.*\b([[:xdigit:]]{2}:?){6}\b/){
+        map {push @rx_tx, $arr_line[$_]} @indexes;
+    }
+
+}
+close(NETSTAT);
+if ($#indexes != 1 || $indexes[0] > $indexes[1]){
+
+    printf "%s: Err %s: Err\n", $t_input_label, $t_output_label;
+    exit 33
+}
+undef @indexes;
+
+my $time = time;
+
+if (! -e $t_path){
+    open FILE, '>', $t_path;
+    printf FILE "%d %d %d", $time, $rx_tx[0], $rx_tx[1];
+    chmod 0666, $t_path;
+}
+close(FILE);
+
+#read old
+open FILE, '<', $t_path;
+# [0] = time; [1] = rx; [2] = tx
+my @old = (split /\s+/, <FILE>);
+close(FILE);
+
+# write new
+open FILE, '>', $t_path;
+printf FILE "%d %d %d", $time, $rx_tx[0], $rx_tx[1];
+close(FILE);
+
+# process rates
+if ($time - $old[0] < 0){
+    printf "%s: Err %s: Err\n", $t_input_label, $t_output_label;
+    exit 33
+}
+$rate[0] = ($rx_tx[0] - $old[1]) / ($time - $old[0]);
+$rate[1] = ($rx_tx[1] - $old[2]) / ($time - $old[0]);
+printf "%s %s %s %s\n", $t_input_label, &format_size($rate[0],1),
+    $t_output_label, &format_size($rate[1], 1);
+
+exit 0
