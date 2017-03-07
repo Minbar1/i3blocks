@@ -23,7 +23,7 @@
 
 #include "log.h"
 
-#ifndef FREEBSD
+#ifndef __FreeBSD__
 int
 io_signal(int fd, int sig)
 {

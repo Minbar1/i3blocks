@@ -32,7 +32,7 @@
 #include "json.h"
 #include "log.h"
 
-#ifdef FREEBSD /*io_signal*/
+#ifdef __FreeBSD__ /*io_signal*/
 #include "sched.h"
 #endif
 
