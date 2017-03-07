@@ -86,6 +86,7 @@ foreach my $line (<NETSTAT>) {
 
 }
 close(NETSTAT);
+
 if ($#indexes != 1 || $indexes[0] > $indexes[1]){
 
     printf "%s: Err %s: Err\n", $t_input_label, $t_output_label;
@@ -114,8 +115,8 @@ printf FILE "%d %d %d", $time, $rx_tx[0], $rx_tx[1];
 close(FILE);
 
 # process rates
-if ($time - $old[0] < 0){
-    printf "%s: Err %s: Err\n", $t_input_label, $t_output_label;
+if ($time - $old[0] <= 0){
+    printf "%s: %s: \n", $t_input_label, $t_output_label;
     exit 33
 }
 $rate[0] = ($rx_tx[0] - $old[1]) / ($time - $old[0]);
