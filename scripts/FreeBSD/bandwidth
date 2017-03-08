@@ -45,27 +45,25 @@ sub format_size {
     }
     return sprintf "%.${decimal}f%s", $size, (qw[ B KiB MiB GiB TiB PiB ])[$si];
 }
+
+sub error {
+    my ($rx, $rt) = (shift, shift);
+    printf "%s $rx %s $rt\n", $t_input_label, $t_output_label;
+    exit 33
+}
 #------------------------------------------------------------------------
 GetOptions("help|h" => \&help,
            "i=s"    => \$t_input_label,
            "o=s"    => \$t_output_label
     );
 
-if (!$t_interface){
-    $t_interface = `ifconfig -lu | cut -d' ' -f1`;
-}
 
-if (!$t_interface){
-    printf "%s N/A %s N/A\n", $t_input_label, $t_output_label;
-    exit 33
-}
+$t_tmpdir = "/tmp" unless $t_tmpdir;
+my @interfaces = split /\s+/, `ifconfig -lu`;
+$t_interface = $interfaces[0] unless $t_interface;
+error "N/A", "N/A" unless $t_interface && grep {$_ eq $t_interface} @interfaces;
+undef @interfaces;
 
-if (!$t_tmpdir){
-    $t_tmpdir = "/tmp";
-}
-
-my $basename = basename $0, "\.[^.]*";
-chomp ($t_path = sprintf "%s/%s-%s", $t_tmpdir, $basename ,$t_interface);
 
 # Get rx_bytes and tx_bytes
 open NETSTAT, "netstat -bn -I $t_interface |" or die;
@@ -86,22 +84,17 @@ foreach my $line (<NETSTAT>) {
 
 }
 close(NETSTAT);
-
-if ($#indexes != 1 || $indexes[0] > $indexes[1]){
-
-    printf "%s: Err %s: Err\n", $t_input_label, $t_output_label;
-    exit 33
-}
+error 'Err', 'Err' if scalar @indexes != 2 || $indexes[0] > $indexes[1];
 undef @indexes;
 
+chomp ($t_path = sprintf "%s/%s-%s", $t_tmpdir, &basename($0, "\.[^.]*"), $t_interface);
 my $time = time;
-
-if (! -e $t_path){
+unless ( -e $t_path) {
     open FILE, '>', $t_path;
     printf FILE "%d %d %d", $time, $rx_tx[0], $rx_tx[1];
     chmod 0666, $t_path;
+    close(FILE);
 }
-close(FILE);
 
 #read old
 open FILE, '<', $t_path;
@@ -115,10 +108,8 @@ printf FILE "%d %d %d", $time, $rx_tx[0], $rx_tx[1];
 close(FILE);
 
 # process rates
-if ($time - $old[0] <= 0){
-    printf "%s: %s: \n", $t_input_label, $t_output_label;
-    exit 33
-}
+error '', '' unless $time - $old[0] > 0;
+
 $rate[0] = ($rx_tx[0] - $old[1]) / ($time - $old[0]);
 $rate[1] = ($rx_tx[1] - $old[2]) / ($time - $old[0]);
 printf "%s %s %s %s\n", $t_input_label, &format_size($rate[0],1),
