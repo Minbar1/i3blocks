@@ -1,0 +1,26 @@
+#!/usr/bin/env perl
+#
+# Copyright 2017 Thierry Ghelew <tlux@ghelew.net>
+#
+# Licensed under the terms of the GNU GPL v3, or any later version.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+#------------------------------------------------------------------------
+
+use strict;
+use warnings;
+use utf8;
+
+my $full_text;
+my $short_text;
+
+$full_text = "N/A";
+$short_text = $full_text;
+
+# NOT IMPLEMENTED
+print "$full_text\n";
+print "$short_text\n";
+
+exit(0);
