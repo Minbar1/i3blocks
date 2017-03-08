@@ -1,0 +1,58 @@
+#!/usr/bin/env perl
+# Copyright (C) 2017 Thierry Ghelew <tlux@ghelew.net>
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#------------------------------------------------------------------------
+use strict;
+use warnings;
+use Getopt::Long;
+
+# input values
+my $t_inet = 'inet';
+my $t_interface = $ENV{'BLOCK_INSTANCE'};
+
+# return value
+my $inet = "";
+
+sub help {
+    print "Usage: iface [-t <4|6>]";
+    print "-t <4|6>: Type of IP address to show";
+    exit 0;
+}
+
+sub error {
+    print "N/A\n" ;
+    exit 33;
+}
+
+#------------------------------------------------------------------------
+exit 1 unless
+    GetOptions("help|h" => \&help,
+           "t=s"    => \$t_inet
+    );
+
+$t_inet = "inet6" if $t_inet eq "6";
+$t_interface = `ifconfig -lu | cut -d' ' -f1` unless $t_interface;
+error unless $t_interface;
+
+# Get IP address
+my $inet_line = join '', grep {/$t_inet/} `ifconfig -u $t_interface 2>/dev/null`;
+$inet = $inet_line =~ /(\b[[:digit:]\.]+\b)/ && $1;
+error unless $inet;
+
+# full text
+print $inet;
+#short text
+print $inet;
+exit 0
