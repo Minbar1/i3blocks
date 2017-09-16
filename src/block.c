@@ -32,7 +32,7 @@
 #include "json.h"
 #include "log.h"
 
-#ifdef __FreeBSD__ /*io_signal*/
+#if defined(__FreeBSD__)  || defined(__OpenBSD__) /*io_signal*/
 #include "sched.h"
 #endif
 
@@ -148,12 +148,12 @@ mark_as_failed(struct block *block, const char *reason)
 	struct properties *props = &block->updated_props;
 
 	memset(props, 0, sizeof(struct properties));
-	strcpy(props->name, NAME(block));
-	strcpy(props->instance, INSTANCE(block));
+	strlcpy(props->name, NAME(block), sizeof(NAME(block)));
+	strlcpy(props->instance, INSTANCE(block), sizeof(INSTANCE(block)));
 	snprintf(props->full_text, sizeof(props->full_text), "[%s] %s", NAME(block), reason);
 	snprintf(props->short_text, sizeof(props->short_text), "[%s] ERROR", NAME(block));
-	strcpy(props->color, "#FF0000");
-	strcpy(props->urgent, "true");
+	strlcpy(props->color, "#FF0000", 8);
+	strlcpy(props->urgent, "true", 5);
 }
 
 static void
@@ -163,8 +163,8 @@ block_update_plain_text(struct block *block, char *buf)
 	char *lines = buf;
 
 	linecpy(&lines, props->full_text, sizeof(props->full_text) - 1);
-        if (block->interval == INTER_PERSIST)
-                return;
+				if (block->interval == INTER_PERSIST)
+								return;
 
 	linecpy(&lines, props->short_text, sizeof(props->short_text) - 1);
 	if (*lines)
@@ -229,7 +229,7 @@ block_update(struct block *block)
 		static const size_t size = sizeof(props->full_text);
 		char concat[size];
 		snprintf(concat, size, "%s %s", LABEL(block), FULL_TEXT(block));
-		strcpy(props->full_text, concat);
+		strlcpy(props->full_text, concat, size);
 	}
 
 	bdebug(block, "updated successfully");
@@ -257,7 +257,11 @@ block_spawn(struct block *block, struct click *click)
 	}
 
 	if (block->interval == INTER_PERSIST) {
-		if (io_signal(out[0], SIGRTMIN))
+#if defined(__OpenBSD__)
+		if (io_signal(out[0], -1))
+#else
+    if (io_signal(out[0], SIGRTMIN))
+#endif
 			return mark_as_failed(block, "event I/O impossible");
 	}
 
@@ -302,24 +306,19 @@ block_spawn(struct block *block, struct click *click)
 void
 block_reap(struct block *block)
 {
-	int status, code;
+	int code = 0;
 
 	if (block->pid <= 0) {
 		bdebug(block, "not spawned yet");
 		return;
 	}
 
-	if (waitpid(block->pid, &status, 0) == -1) {
-		berrorx(block, "waitpid(%d)", block->pid);
-		mark_as_failed(block, strerror(errno));
-		goto close;
-	}
-
-	code = WEXITSTATUS(status);
+	code = WEXITSTATUS(block->ret_status);
 	bdebug(block, "process %d exited with %d", block->pid, code);
 
 	/* Process successfully reaped, reset the block PID */
 	block->pid = 0;
+  block->ret_status = 0;
 
 	block_dump_stderr(block);
 
@@ -327,9 +326,9 @@ block_reap(struct block *block)
 		char reason[32];
 
 		if (code == EXIT_ERR_INTERNAL)
-			sprintf(reason, "internal error");
+			snprintf(reason, sizeof(reason), "internal error");
 		else
-			sprintf(reason, "bad exit code %d", code);
+			snprintf(reason, sizeof(reason), "bad exit code %d", code);
 
 		berror(block, "%s", reason);
 		mark_as_failed(block, reason);
@@ -344,7 +343,7 @@ block_reap(struct block *block)
 
 	/* Exit code takes precedence over the output */
 	if (code == EXIT_URGENT)
-		strcpy(block->updated_props.urgent, "true");
+		strlcpy(block->updated_props.urgent, "true", 5);
 close:
 	if (close(block->out) == -1)
 		berrorx(block, "close stdout");

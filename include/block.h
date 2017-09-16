@@ -79,6 +79,9 @@ struct block {
 	unsigned long timestamp;
 	pid_t pid;
 	int out, err;
+
+	/* return status from waitpid */
+	int ret_status;
 };
 
 /* Shortcuts to config */

@@ -81,7 +81,7 @@ setup_timer(struct bar *bar)
 				 sleeptime, NULL);
 #elif defined(__OpenBSD__)
 	EV_SET(&timer_event, 0x01, EVFILT_TIMER, EV_ADD, 0, sleeptime * 1000,
-				  NULL);
+					NULL);
 #endif
 
 	if (kevent(kqueue_fd, &timer_event, 1, NULL, 0 , NULL) < 0){
@@ -138,14 +138,14 @@ setup_signals(void)
 	add_signal(SIGIO);
 
 #if defined(__FreeBSD__)
-  /* Real-time signals for blocks */
-  for (int sig = SIGRTMIN + 1; sig <= SIGRTMAX; ++sig) {
-    debug("provide signal %d (%s)", sig, strsignal(sig));
-    add_signal(sig);
-  }
+	/* Real-time signals for blocks */
+	for (int sig = SIGRTMIN + 1; sig <= SIGRTMAX; ++sig) {
+		debug("provide signal %d (%s)", sig, strsignal(sig));
+		add_signal(sig);
+	}
 #endif
 
-  /* Block signals for which we are interested in waiting */
+	/* Block signals for which we are interested in waiting */
 	if (sigprocmask(SIG_SETMASK, &siglist, NULL) == -1) {
 		errorx("sigprocmask");
 		return 1;
@@ -252,7 +252,6 @@ sched_start(struct bar *bar)
 						strsignal(recv.ident));
 			if(recv.ident == SIGCHLD) {
 				/* Child(ren) dead?*/
-
 				bar_poll_exited(bar);
 				json_print_bar(bar);
 #if defined(__FreeBSD__)
@@ -264,12 +263,12 @@ sched_start(struct bar *bar)
 				error("SIGUSR{1,2} are deprecated, ignoring.");
 			}
 #elif defined(__OpenBSD__)
-    } else if (recv.ident == SIGUSR1 || recv.ident == SIGUSR2) {
-      /* Blocks signaled? */
-      bar_poll_signaled(bar, recv.ident - SIGUSR1 + 1);
-    }
+		} else if (recv.ident == SIGUSR1 || recv.ident == SIGUSR2) {
+			/* Blocks signaled? */
+			bar_poll_signaled(bar, recv.ident - SIGUSR1 + 1);
+		}
 #endif
-      break;
+			break;
 
 		case EVFILT_READ:
 			/* Persistent block ready to be read? */

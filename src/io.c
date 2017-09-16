@@ -23,7 +23,7 @@
 
 #include "log.h"
 
-#ifndef __FreeBSD__
+#if !defined(__FreeBSD__) && !defined(__OpenBSD__)
 int
 io_signal(int fd, int sig)
 {
@@ -87,7 +87,7 @@ io_readline(int fd, char *buffer, size_t size)
 		buffer[nr++] = c;
 		if (c == '\n')
 			break;
-    }
+		}
 
 	return nr;
 }

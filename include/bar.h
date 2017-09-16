@@ -19,6 +19,10 @@
 #ifndef _BAR_H
 #define _BAR_H
 
+#ifndef WAIT_ANY /* support for __OpenBSD__ */
+#define WAIT_ANY (-1)
+#endif
+
 struct bar {
 	struct block *blocks;
 	unsigned int num;
