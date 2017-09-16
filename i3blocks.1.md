@@ -15,7 +15,7 @@ interval for user scripts.
 
 #OPTIONS
 -c <configfile>
-:   Specifies an alternate configuration file path. By default, i3blocks looks 
+:   Specifies an alternate configuration file path. By default, i3blocks looks
     for configuration files in the following order (note that /etc may be
     prefixed with /usr/local depending on the compilation flags):
 
@@ -122,11 +122,17 @@ The following keys are specific to **i3blocks**.
 	 updated as soon as it outputs a line. Thus limited to single line updates.
 
 `signal`
-:	 The signal number used to update the block. All the real-time (think
-     prioritized and queueable) signals are available to the user. The number is
-     valid between 1 and N, where SIGRTMIN+N = SIGRTMAX. (Note: there are 31
-     real-time signals in Linux.) For instance, `signal=10` means that this
+:	 The signal number used to update the block.
+     Depending on the platforms (Linux, *BSD),
+     some real-time (think prioritized and queueable) signals
+     are available to the user.
+     In Linux and FreeBSD, the number is valid between 1 and N,
+     where SIGRTMIN+N = SIGRTMAX. (Note: there are 31 real-time signals in Linux.)
+     In OpenBSD only SIGUSR1 and SIGUSR2 signals are available.
+     For instance, `signal=10` means that this
      block will be updated when **i3blocks** receives SIGRTMIN+10.
+     In OpenBSD `signal=1` means this block will be updated when **i3blocks**
+     receives SIGUSR1.
 
 `label`
 : 	An optional label to preprend to the `full_text` after an update.
@@ -157,14 +163,14 @@ If the command line returns 0 or 33, the block is updated. Otherwise, it is
 considered a failure and the first line (if any) is still displayed. Note that
 stderr is ignored. A return code of 33 will set the `urgent` flag to true.
 
-For example, this script prints the battery percentage and sets the urgent flag 
+For example, this script prints the battery percentage and sets the urgent flag
 if it is below 10%:
 
     BAT=`acpi -b | grep -E -o '[0-9][0-9]?%'`
     echo "BAT: $BAT"
     test ${BAT%?} -le 10 && exit 33 || exit 0
 
-When forking a block command, **i3blocks** will set the environment with some 
+When forking a block command, **i3blocks** will set the environment with some
 `BLOCK_*` variables. The following variables are always provided, with
 eventually an empty string as the value.
 
@@ -272,5 +278,5 @@ Copyright (C) 2014 Vivien Didelot <vivien.didelot@gmail.com>
 
 License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>.
 
-This is free software: you are free to change and redistribute it. There is NO 
+This is free software: you are free to change and redistribute it. There is NO
 WARRANTY, to the extent permitted by law.

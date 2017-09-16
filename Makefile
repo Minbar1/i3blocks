@@ -57,6 +57,7 @@ $(PROGRAM).1: $(PROGRAM).1.md
 	pandoc --to man --standalone --output $@ $<
 
 clean:
+	rm -f src/platform/{BSD,Linux}/*.o
 	rm -f src/*.o $(PROGRAM)
 
 install: all
