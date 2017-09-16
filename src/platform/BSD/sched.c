@@ -76,8 +76,13 @@ setup_timer(struct bar *bar)
 		return 0;
 	}
 
+#if defined(__FreeBSD__)
 	EV_SET(&timer_event, 0x01, EVFILT_TIMER, EV_ADD, NOTE_SECONDS,
 				 sleeptime, NULL);
+#elif defined(__OpenBSD__)
+	EV_SET(&timer_event, 0x01, EVFILT_TIMER, EV_ADD, 0, sleeptime * 1000,
+				  NULL);
+#endif
 
 	if (kevent(kqueue_fd, &timer_event, 1, NULL, 0 , NULL) < 0){
 		errorx("kevent timer %d ", (int)timer_event.ident);
@@ -125,20 +130,22 @@ setup_signals(void)
 	/* Block updates (forks) */
 	add_signal(SIGCHLD);
 
-	/* Deprecated signals */
+	/* Deprecated signals for __FreeBSD__ */
 	add_signal(SIGUSR1);
 	add_signal(SIGUSR2);
 
 	/* Click signal */
 	add_signal(SIGIO);
 
-	/* Real-time signals for blocks */
-	for (int sig = SIGRTMIN + 1; sig <= SIGRTMAX; ++sig) {
-		debug("provide signal %d (%s)", sig, strsignal(sig));
-		add_signal(sig);
-	}
+#if defined(__FreeBSD__)
+  /* Real-time signals for blocks */
+  for (int sig = SIGRTMIN + 1; sig <= SIGRTMAX; ++sig) {
+    debug("provide signal %d (%s)", sig, strsignal(sig));
+    add_signal(sig);
+  }
+#endif
 
-	/* Block signals for which we are interested in waiting */
+  /* Block signals for which we are interested in waiting */
 	if (sigprocmask(SIG_SETMASK, &siglist, NULL) == -1) {
 		errorx("sigprocmask");
 		return 1;
@@ -241,12 +248,14 @@ sched_start(struct bar *bar)
 		switch(recv.filter){
 
 		case EVFILT_SIGNAL:
-			debug("kqueue event %d (%s)received (EVFILT_SIGNAL)", (int)recv.ident,
+			debug("kqueue event %d (%s) received (EVFILT_SIGNAL)", (int)recv.ident,
 						strsignal(recv.ident));
 			if(recv.ident == SIGCHLD) {
-				/* Child(ren) dead? */
+				/* Child(ren) dead?*/
+
 				bar_poll_exited(bar);
 				json_print_bar(bar);
+#if defined(__FreeBSD__)
 			} else if (recv.ident > SIGRTMIN && recv.ident <= SIGRTMAX) {
 				/* Blocks signaled? */
 				bar_poll_signaled(bar, recv.ident - SIGRTMIN);
@@ -254,7 +263,13 @@ sched_start(struct bar *bar)
 				/* Deprecated signals? */
 				error("SIGUSR{1,2} are deprecated, ignoring.");
 			}
-			break;
+#elif defined(__OpenBSD__)
+    } else if (recv.ident == SIGUSR1 || recv.ident == SIGUSR2) {
+      /* Blocks signaled? */
+      bar_poll_signaled(bar, recv.ident - SIGUSR1 + 1);
+    }
+#endif
+      break;
 
 		case EVFILT_READ:
 			/* Persistent block ready to be read? */

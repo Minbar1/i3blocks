@@ -30,7 +30,11 @@ CPPFLAGS += -DSYSCONFDIR=\"$(SYSCONFDIR)\"
 CPPFLAGS += -DVERSION=\"${VERSION}\"
 CFLAGS += -std=gnu99 -Iinclude -Wall -Werror=format-security
 
-OBJS := $(sort $(wildcard src/*.c)) $(sort $(wildcard src/platform/$(UNAME_S)/*.c))
+ifeq ($(UNAME),Linux)
+	OBJS := $(sort $(wildcard src/*.c)) $(sort $(wildcard src/platform/Linux/*.c))
+else
+	OBJS := $(sort $(wildcard src/*.c)) $(sort $(wildcard src/platform/BSD/*.c))
+endif
 OBJS := $(OBJS:.c=.o)
 
 %.o: %.c %.h
@@ -40,7 +44,7 @@ OBJS := $(OBJS:.c=.o)
 all: $(PROGRAM)
 
 debug: CPPFLAGS += -DDEBUG
-debug: CFLAGS += -g
+debug: CFLAGS += -ggdb
 debug: $(PROGRAM)
 
 $(PROGRAM): ${OBJS}

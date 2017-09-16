@@ -5,3 +5,4 @@ GRTAGS
 GTAGS
 .clang*
 .dir-locals.el
+test/
