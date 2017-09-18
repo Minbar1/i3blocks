@@ -69,11 +69,13 @@ GetOptions("help|h" => \&help,
     );
 
 if ($t_swap){
-    my $swap_enabled = `/sbin/sysctl -n vm.swap_enabled`;
-    # do we have swap ?
-    if (!$swap_enabled){
-        print "N/A\n";
-        exit 0;
+    if ($^O =~ "freebsd"){
+        my $swap_enabled = `/sbin/sysctl -n vm.swap_enabled`;
+        # do we have swap ?
+        if (!$swap_enabled){
+            print "N/A\n";
+            exit 0;
+        }
     }
    # get swap info
     my $swap_info = `/usr/sbin/pstat -T`;
@@ -84,16 +86,40 @@ if ($t_swap){
 } else {
    # get memory info
     my $sys_hw_physmem = `/sbin/sysctl -n hw.physmem`;
-    my $sys_hw_pagesize = `/sbin/sysctl -n hw.pagesize`;
-    my $sys_vm_v_active_count = `/sbin/sysctl -n vm.stats.vm.v_active_count` *
-        $sys_hw_pagesize;
-    my $sys_vm_v_cache_count = `/sbin/sysctl -n vm.stats.vm.v_cache_count` *
-        $sys_hw_pagesize;
-    my $sys_vm_v_free_count = `/sbin/sysctl -n vm.stats.vm.v_free_count`   *
-        $sys_hw_pagesize;
     $mem_total = &mem_rounded($sys_hw_physmem);
-    $mem_used  = $mem_total - $sys_vm_v_active_count -
-        $sys_vm_v_cache_count - $sys_vm_v_free_count;
+    if ($^O =~ "freebsd"){
+        my $sys_hw_pagesize = `/sbin/sysctl -n hw.pagesize`;
+        my $sys_vm_v_active_count = `/sbin/sysctl -n vm.stats.vm.v_active_count` *
+            $sys_hw_pagesize;
+        my $sys_vm_v_cache_count = `/sbin/sysctl -n vm.stats.vm.v_cache_count` *
+            $sys_hw_pagesize;
+        my $sys_vm_v_free_count = `/sbin/sysctl -n vm.stats.vm.v_free_count`   *
+            $sys_hw_pagesize;
+        $mem_used  = $mem_total - $sys_vm_v_active_count -
+            $sys_vm_v_cache_count - $sys_vm_v_free_count;
+    }elsif ($^O =~ "openbsd"){
+        open (VMSTAT, 'vmstat |') or die;
+        my @men_index;
+        my @mem_usage;
+        foreach my $line (<VMSTAT>) {
+            chomp $line;
+            my @arr_line = split /\s+/, $line;
+            if ($line =~ /.*\avm|fre\b.*/) {
+                # get index of avm and fre columns
+                @men_index = grep { $arr_line[$_] =~ "avm|fre" } 0..$#arr_line;
+            }
+            elsif ($line =~ /^[\d\s\.KMGT]+$/) {
+                # get usage per cpu 100 - idle
+                map { push @mem_usage, $arr_line[$_] } @men_index;
+            }
+        }
+        close(VMSTAT);
+        undef @men_index;
+        $#mem_usage < 1 and die "used and free memory cannot be read";
+        $mem_used =  $mem_total - ($mem_usage[1] + $mem_usage[0]) * 1024;
+
+        print "$mem_total : $mem_used\n";
+    }
 }
 $mem_total == 0 and die "memory cannot be read";
 $mem_pct = $mem_used / $mem_total * 100;

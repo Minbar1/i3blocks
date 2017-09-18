@@ -30,7 +30,7 @@ my $t_path = "";
 my @rate = (-1, -1);
 
 sub help {
-    print "Usage: bandwidth [-i <input label>] [-o <output label>]";
+    print "Usage: bandwidth [-e <interface>] [-i <input label>] [-o <output label>]";
     print "-i <input label>: Use <input label> for bandwidth input label";
     print "-o <output label>: Use <output label> for bandwidth output label";
     exit 0;
@@ -54,16 +54,17 @@ sub error {
 #------------------------------------------------------------------------
 GetOptions("help|h" => \&help,
            "i=s"    => \$t_input_label,
-           "o=s"    => \$t_output_label
+           "o=s"    => \$t_output_label,
+           "e=s"    => \$t_interface
     );
 
-
 $t_tmpdir = "/tmp" unless $t_tmpdir;
-my @interfaces = split /\s+/, `ifconfig -lu`;
+my @interfaces;
+@interfaces = split /\s+/, `ifconfig | awk -F':' '/^[a-z]/{print \$1}'` if ($^O =~ "openbsd");
+@interfaces = split /\s+/, `ifconfig -lu` if ($^O =~ "freebsd");
 $t_interface = $interfaces[0] unless $t_interface;
 error "N/A", "N/A" unless $t_interface && grep {$_ eq $t_interface} @interfaces;
 undef @interfaces;
-
 
 # Get rx_bytes and tx_bytes
 open NETSTAT, "netstat -bn -I $t_interface |" or die;
@@ -80,6 +81,8 @@ foreach my $line (<NETSTAT>) {
     }
     elsif ($line =~ /.*\b([[:xdigit:]]{2}:?){6}\b/){
         map {push @rx_tx, $arr_line[$_]} @indexes;
+        # we only want the last line
+        last;
     }
 
 }

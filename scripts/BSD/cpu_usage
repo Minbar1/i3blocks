@@ -52,7 +52,11 @@ sub average{
 }
 
 # Get CPU usage
-open (VMSTAT, 'vmstat -P -p proc |') or die;
+my $command;
+$command = 'vmstat -P -p proc |' if ($^O =~ "freebsd");
+$command = 'vmstat -c2 |' if ($^O =~ "openbsd");
+
+open (VMSTAT, $command) or die;
 my @cpu_index;
 foreach my $line (<VMSTAT>) {
     chomp $line;

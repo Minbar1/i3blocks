@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh -x
 # Copyright (C) 2014 Julien Bonjean <julien@bonjean.info>
 # Copyright (C) 2014 Alexander Keller <github@nycroth.com>
 # Copyright (C) 2017 Thierry Ghelew <tlux@ghelew.net>
@@ -27,54 +27,115 @@ STEP="${1:-5}"
 # The second parameter sets the MUTE label
 MUTE="${2:-MUTE}"
 
-# The third parameter sets the mixer label
+# The third parameter sets the $_command label
 MLABEL="${3}"
 
-# Name of the mixer to control.
+# Name of the $_command to control.
 # Generally it's one of:
-#vol ,pcm ,speaker ,line ,mic ,mix ,rec ,igain ,ogain
-MIXER=${BLOCK_INSTANCE:-vol}
+#FreeBSD vol ,pcm ,speaker ,line ,mic ,mix ,rec ,igain ,ogain
+#OpenBSD outputs.master
+
+if [ `uname -s` = "FreeBSD" ]; then
+    MIXER=${BLOCK_INSTANCE:-vol}
+elif [ `uname -s` = "OpenBSD" ]; then
+    MIXER=${BLOCK_INSTANCE:-outputs.master}
+fi
 #------------------------------------------------------------------------
 
+_command=mixer
+if [ `uname -s` = "OpenBSD" ]; then
+    _command=mixerctl
+fi
+
 mixer_level() {
-    mixer -S $1 | awk -F : '{print $2}'
+    if [ `uname -s` = "FreeBSD" ]; then
+        $_command -S $1 | awk -F : '{print $2}'
+    elif [ `uname -s` = "OpenBSD" ]; then
+        $_command -n $1 | awk -F , '{print $1}'
+    fi
 }
 
 
 # mute input device: + to unmute; - to mute
 mute() {
     local sign=${1:-+}
-    mixer pcm ${sign}100 >/dev/null 2>&1
+    if [ `uname -s` = "OpenBSD" ]; then
+        if [ $sign = - ]; then
+            $_command -q outputs.master.mute=on
+        else
+            $_command -q outputs.master.mute=off
+        fi
+    elif [ `uname -s` = "FreeBSD" ]; then
+        $_command pcm ${sign}100 >/dev/null 2>&1
+    fi
 }
 
 # mute default input channel pcm
 mute_toggle() {
-    if [ `mixer_level pcm` -ge 100 ]; then
-       mute -
-    else
-       mute +
+
+    if [ `uname -s` = "FreeBSD" ]; then
+        if [ `mixer_level pcm` -ge 100 ]; then
+            mute -
+        else
+            mute +
+        fi
+    elif [ `uname -s` = "OpenBSD" ]; then
+        $_command -qt ${MIXER}.mute
+    fi
+}
+
+volume_set() {
+    local sign=${1:-+}
+    echo "sign:$sign"
+    local level,current
+    if [ `uname -s` = "FreeBSD" ]; then
+        $_command $MIXER ${sign}${STEP}
+    elif [ `uname -s` = "OpenBSD" ]; then
+        current=`mixer_level $MIXER`
+        if [ $sign = - ]; then
+            level=$(echo "${current}-${STEP}" | bc)
+        else
+            level=$(echo "${current}+${STEP}" | bc)
+        fi
+        $_command $MIXER=$level
     fi
 }
 
 volume() {
-  mixer -S ${MIXER} | awk -F : -v mlabel=${MLABEL} -v pcm_level=`mixer_level pcm` -v mute=${MUTE} '{
-    if ( pcm_level <= 0 )
-       print mute
-    else
-    if ($2 != $3)
-       printf("%s [%s:%s]",mlabel, $2, $3)
-    else
-       printf("%s %s",mlabel,$2)
+    if [ `uname -s` = "FreeBSD" ]; then
+        $_command -S ${MIXER} | awk -F : -v mlabel=${MLABEL} -v pcm_level=`mixer_level pcm` -v mute=${MUTE} '{
+            if ( pcm_level <= 0 )
+            print mute
+            else
+            if ($2 != $3)
+            printf("%s [%s:%s]",mlabel, $2, $3)
+            else
+            printf("%s %s",mlabel,$2)
 
-  }'
+        }'
+    elif [ `uname -s` = "OpenBSD" ]; then
+        $_command -qn ${MIXER} | awk -F , -v mlabel=${MLABEL} -v mute_level=`mixer_level ${MIXER}.mute` -v mute=${MUTE} '{
+            if ( mute_level == "on" )
+            print mute
+            else
+            if ($1 != $2)
+            printf("%s [%d:%d]",mlabel, $1, $2)
+            else
+            printf("%s %d",mlabel,$1/255 * 100)
+
+        }'
+    fi
+
 }
 
 #------------------------------------------------------------------------
 
 case $BLOCK_BUTTON in
   3) mute_toggle ;;  # right click, mute/unmute
-  4) mute +; mixer $MIXER +${STEP} >/dev/null 2>&1 ;; # scroll up, increase
-  5) mute +; mixer $MIXER -${STEP} >/dev/null 2>&1 ;; # scroll down, decrease
+  #4) mute +; volume_set + >/dev/null 2>&1 ;; # scroll up, increase
+  4) mute +; volume_set + ;; # scroll up, increase
+  #5) mute +; volume_set - >/dev/null 2>&1 ;; # scroll down, decrease
+  5) mute +; volume_set - ;; # scroll down, decrease
 esac
 
 volume
