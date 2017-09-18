@@ -1,4 +1,4 @@
-RELEASE_VERSION = 1.4
+RELEASE_VERSION = 1.5
 
 ifndef PREFIX
   PREFIX=/usr/local
@@ -30,11 +30,12 @@ CPPFLAGS += -DSYSCONFDIR=\"$(SYSCONFDIR)\"
 CPPFLAGS += -DVERSION=\"${VERSION}\"
 CFLAGS += -std=gnu99 -Iinclude -Wall -Werror=format-security
 
-ifeq ($(UNAME),Linux)
-	OBJS := $(sort $(wildcard src/*.c)) $(sort $(wildcard src/platform/Linux/*.c))
+ifeq ($(UNAME_S),Linux)
+	OS:=Linux
 else
-	OBJS := $(sort $(wildcard src/*.c)) $(sort $(wildcard src/platform/BSD/*.c))
+	OS:=BSD
 endif
+OBJS := $(sort $(wildcard src/*.c)) $(sort $(wildcard src/platform/${OS}/*.c))
 OBJS := $(OBJS:.c=.o)
 
 %.o: %.c %.h
@@ -67,7 +68,7 @@ install: all
 	install -m 755 $(PROGRAM) $(DESTDIR)$(PREFIX)/bin/$(PROGRAM)
 	sed 's,$$SCRIPT_DIR,$(LIBEXECDIR)/$(PROGRAM),' $(PROGRAM).conf > $(DESTDIR)$(SYSCONFDIR)/$(PROGRAM).conf
 	chmod 644 $(DESTDIR)$(SYSCONFDIR)/$(PROGRAM).conf
-	install -m 755 scripts/$(UNAME_S)/* $(DESTDIR)$(LIBEXECDIR)/$(PROGRAM)/
+	install -m 755 scripts/$(OS)/* $(DESTDIR)$(LIBEXECDIR)/$(PROGRAM)/
 
 install-man: man
 	install -m 755 -d $(DESTDIR)$(DATAROOTDIR)/man/man1
