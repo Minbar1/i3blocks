@@ -1,4 +1,4 @@
-#!/bin/sh -x
+#!/bin/sh
 # Copyright (C) 2014 Julien Bonjean <julien@bonjean.info>
 # Copyright (C) 2014 Alexander Keller <github@nycroth.com>
 # Copyright (C) 2017 Thierry Ghelew <tlux@ghelew.net>
@@ -86,7 +86,6 @@ mute_toggle() {
 
 volume_set() {
     local sign=${1:-+}
-    echo "sign:$sign"
     local level,current
     if [ `uname -s` = "FreeBSD" ]; then
         $_command $MIXER ${sign}${STEP}
@@ -132,10 +131,8 @@ volume() {
 
 case $BLOCK_BUTTON in
   3) mute_toggle ;;  # right click, mute/unmute
-  #4) mute +; volume_set + >/dev/null 2>&1 ;; # scroll up, increase
-  4) mute +; volume_set + ;; # scroll up, increase
-  #5) mute +; volume_set - >/dev/null 2>&1 ;; # scroll down, decrease
-  5) mute +; volume_set - ;; # scroll down, decrease
+  4) mute +; volume_set + >/dev/null 2>&1 ;; # scroll up, increase
+  5) mute +; volume_set - >/dev/null 2>&1 ;; # scroll down, decrease
 esac
 
 volume

@@ -117,8 +117,6 @@ if ($t_swap){
         undef @men_index;
         $#mem_usage < 1 and die "used and free memory cannot be read";
         $mem_used =  $mem_total - ($mem_usage[1] + $mem_usage[0]) * 1024;
-
-        print "$mem_total : $mem_used\n";
     }
 }
 $mem_total == 0 and die "memory cannot be read";
