@@ -62,6 +62,20 @@ sub format_mem {
     }
     return sprintf "%.${decimal}f%s", $size, (qw[ B KiB MiB GiB TiB PiB ])[$si];
 }
+
+sub convert_mem_to_byte {
+    my $sunit = shift;
+    $sunit = 0 unless $sunit;
+    my %converted = (
+        B => 0,
+        KiB => 1,
+        MiB => 2,
+        GiB => 3,
+        TiB => 4,
+        PiB => 5,
+ );
+    return 1024**$converted{$sunit};
+}
 #------------------------------------------------------------------------
 GetOptions("help|h" => \&help,
            "d=i"    => \$t_decimal,
@@ -109,14 +123,20 @@ if ($t_swap){
                 @men_index = grep { $arr_line[$_] =~ "avm|fre" } 0..$#arr_line;
             }
             elsif ($line =~ /^[\d\s\.KMGT]+$/) {
-                # get usage per cpu 100 - idle
+                # get mem usage
                 map { push @mem_usage, $arr_line[$_] } @men_index;
             }
         }
         close(VMSTAT);
         undef @men_index;
+        my $unit = "KiB";
         $#mem_usage < 1 and die "used and free memory cannot be read";
-        $mem_used =  $mem_total - ($mem_usage[1] + $mem_usage[0]) * 1024;
+        # on 6.2 the size unit is now MiB and the unit is printed
+        if ($mem_usage[0] =~ /^\d+M/) {
+            chop(@mem_usage);
+            $unit = "MiB";
+        }
+        $mem_used =  $mem_total - ($mem_usage[1] + $mem_usage[0]) * &convert_mem_to_byte($unit) ;
     }
 }
 $mem_total == 0 and die "memory cannot be read";
