@@ -20,8 +20,8 @@
 #define _BAR_H
 
 struct bar {
-	struct block *blocks;
-	unsigned int num;
+    struct block *blocks;
+    unsigned int num;
 };
 
 void bar_poll_timed(struct bar *);
