@@ -21,22 +21,20 @@ customization such as text alignment, urgency, color, and more.
 
 - - -
 
-Here is an example of status line, showing the time updated every 5 seconds,
+Here is an example of status line, showing the time updated every second,
 the volume updated only when i3blocks receives a SIGRTMIN+10, and click events.
-Please note that this example will not work under OpenBSD since only SIGUSR1 and
-SIGUSR2 signals are supported.
 
 ```` ini
 [volume]
-label=Volume:
-command=amixer get Master | grep -E -o '[0-9]{1,3}?%' | head -1
-interval=once
-signal=10
-# use 'pkill -RTMIN+10 i3blocks' after changing the volume
+label=
+command=~/.config/i3/modules/volume
+interval=1
+signal=1
 
 [time]
-command=date '+%D %T'
-interval=5
+command=date '+%H:%M:%S  %A: %d:%m:%Y'
+interval=1
+color=#7070db
 
 [clickme]
 full_text=Click me!
