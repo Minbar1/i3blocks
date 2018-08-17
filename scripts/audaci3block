@@ -1,0 +1,34 @@
+#!/bin/sh
+
+INSTANCE="${BLOCK_INSTANCE}"
+
+ICON_PLAY=""
+ICON_PAUSE=""
+ICON_STOP=""
+CUR_ICON=""
+
+
+if [ "${BLOCK_BUTTON}" -eq 1 ]; then
+    $(audtool playlist-reverse)
+elif [ "${BLOCK_BUTTON}" -eq 2 ]; then
+    $(audtool playback-playpause)
+elif [ "${BLOCK_BUTTON}" -eq 3 ]; then
+    $(audtool playlist-advance)
+fi
+
+PLAYER_STATUS="$(audtool playback-status)"
+INFO_TITLE="$(audtool current-song | cut -d "-" -f3)"
+INFO_ARTIST="$(audtool current-song | cut -d "-" -f1)"
+
+if [ "${PLAYER_STATUS}" = "paused" ]; then
+  CUR_ICON="${ICON_PAUSE}"
+elif [ "${PLAYER_STATUS}" = "playing" ]; then
+  CUR_ICON="${ICON_PLAY}"
+else
+  exit 33
+fi
+
+if [ "${INFO_TITLE}" != "" ] && [ "${INFO_ARTIST}" != "" ]; then
+  echo "${INFO_ARTIST} - ${INFO_TITLE} ${CUR_ICON}"
+  echo "${INFO_ARTIST} - ${INFO_TITLE} ${CUR_ICON}"
+fi
