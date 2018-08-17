@@ -19,6 +19,9 @@
 #ifndef _BAR_H
 #define _BAR_H
 
+#define WAIT_ANY (-1)
+#endif
+
 struct bar {
     struct block *blocks;
     unsigned int num;
