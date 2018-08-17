@@ -23,6 +23,7 @@
 
 #include "log.h"
 
+#ifndef __FreeBSD__
 int
 io_signal(int fd, int sig)
 {
@@ -54,6 +55,7 @@ io_signal(int fd, int sig)
 
 	return 0;
 }
+#endif
 
 static ssize_t
 read_nonblock(int fd, char *buf, size_t size)
@@ -78,14 +80,14 @@ read_nonblock(int fd, char *buf, size_t size)
 int
 io_readline(int fd, char *buffer, size_t size)
 {
-	int nr = 0;
+	unsigned long nr = 0;
 	char c;
 
 	while (nr < size && read_nonblock(fd, &c, 1) > 0) {
 		buffer[nr++] = c;
 		if (c == '\n')
 			break;
-    }
+		}
 
 	return nr;
 }
