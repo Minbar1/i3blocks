@@ -1,4 +1,4 @@
-RELEASE_VERSION = 1.4
+RELEASE_VERSION = 1.5
 
 ifndef PREFIX
   PREFIX=/usr/local
@@ -25,11 +25,17 @@ endif
 
 PROGRAM = i3blocks
 
+UNAME_S:= $(shell uname -s)
 CPPFLAGS += -DSYSCONFDIR=\"$(SYSCONFDIR)\"
 CPPFLAGS += -DVERSION=\"${VERSION}\"
 CFLAGS += -std=gnu99 -Iinclude -Wall -Werror=format-security
 
-OBJS := $(sort $(wildcard src/*.c))
+ifeq ($(UNAME_S),Linux)
+	OS:=Linux
+else
+	OS:=BSD
+endif
+OBJS := $(sort $(wildcard src/*.c)) $(sort $(wildcard src/platform/${OS}/*.c))
 OBJS := $(OBJS:.c=.o)
 
 %.o: %.c %.h
@@ -39,7 +45,7 @@ OBJS := $(OBJS:.c=.o)
 all: $(PROGRAM)
 
 debug: CPPFLAGS += -DDEBUG
-debug: CFLAGS += -g
+debug: CFLAGS += -ggdb
 debug: $(PROGRAM)
 
 $(PROGRAM): ${OBJS}
@@ -52,6 +58,7 @@ $(PROGRAM).1: $(PROGRAM).1.md
 	pandoc --to man --standalone --output $@ $<
 
 clean:
+	rm -f src/platform/{BSD,Linux}/*.o
 	rm -f src/*.o $(PROGRAM)
 
 install: all
@@ -61,7 +68,7 @@ install: all
 	install -m 755 $(PROGRAM) $(DESTDIR)$(PREFIX)/bin/$(PROGRAM)
 	sed 's,$$SCRIPT_DIR,$(LIBEXECDIR)/$(PROGRAM),' $(PROGRAM).conf > $(DESTDIR)$(SYSCONFDIR)/$(PROGRAM).conf
 	chmod 644 $(DESTDIR)$(SYSCONFDIR)/$(PROGRAM).conf
-	install -m 755 scripts/* $(DESTDIR)$(LIBEXECDIR)/$(PROGRAM)/
+	install -m 755 scripts/$(OS)/* $(DESTDIR)$(LIBEXECDIR)/$(PROGRAM)/
 
 install-man: man
 	install -m 755 -d $(DESTDIR)$(DATAROOTDIR)/man/man1
