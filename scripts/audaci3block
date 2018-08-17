@@ -1,5 +1,6 @@
 #!/bin/sh
 # Copyright (C) 2018 Minbari
+# Display the status and let you control Audacious player (play/pause/next/previous).
 
 INSTANCE="${BLOCK_INSTANCE}"
 
