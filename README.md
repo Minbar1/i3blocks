@@ -76,7 +76,7 @@ i3blocks may already be packaged for your distribution:
   * Gentoo: [ebuild](https://github.com/Sabayon-Labs/spike-community-overlay/tree/master/x11-misc/i3blocks)
   * Debian: [i3blocks](https://packages.debian.org/i3blocks) and Ubuntu: [i3blocks](http://packages.ubuntu.com/i3blocks)
 
-For *BSD a port is on its way. You may also install i3blocks from source:
+For FreeBSD a port is on its way. You may also install i3blocks from source:
 
     $ git clone git://github.com/Minbar1/i3blocks
     $ cd i3blocks
