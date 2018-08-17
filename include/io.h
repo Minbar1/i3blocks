@@ -20,6 +20,7 @@
 #define _IO_H
 
 #ifndef __FreeBSD__ /* int kqueue() required */
+/* int kqueue() required */
 int io_signal(int, int);
 #endif
 int io_readline(int, char *, size_t);
