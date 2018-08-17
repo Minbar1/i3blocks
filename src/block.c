@@ -315,7 +315,7 @@ block_reap(struct block *block)
                 goto close;
         }
 
-        code = WEXITSTATUS(status);
+        code = WEXITSTATUS(block->ret_status);
 	bdebug(block, "process %d exited with %d", block->pid, code);
 
 	/* Process successfully reaped, reset the block PID */
