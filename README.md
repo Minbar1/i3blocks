@@ -51,7 +51,7 @@ i3blocks. Feel free to contribute and improve them!
 
 The default config will look like this:
 
-![](http://i.imgur.com/p3d6MeK.png)
+![](https://image.ibb.co/jd68Vz/i3blocks_freebsd.png)
 
 The scripts provided by default may use external tools:
 
