@@ -105,20 +105,22 @@ bar_poll_exited(struct bar *bar)
 		siginfo_t infop = { 0 };
 
 		/* Non-blocking check for dead child(ren) */
-		if (waitid(P_ALL, 0, &infop, WEXITED | WNOHANG | WNOWAIT) == -1)
+            if (waitid(P_ALL, 0, &infop, WEXITED | WNOHANG | WNOWAIT) == -1)
 			if (errno != ECHILD)
-				errorx("waitid");
+                    errorx("waitid");
+		}
 
 		/* Error or no (dead yet) child(ren) */
-		if (infop.si_pid == 0)
+            if (infop.si_pid == 0)
 			break;
 
 		/* Find the dead process */
 		for (int i = 0; i < bar->num; ++i) {
 			struct block *block = bar->blocks + i;
 
-			if (block->pid == infop.si_pid) {
+            if (block->pid == infop.si_pid) {    
 				bdebug(block, "exited");
+				block->ret_status = status;
 				block_reap(block);
 				if (block->interval == INTER_REPEAT) {
 					if (block->timestamp == time(NULL))
