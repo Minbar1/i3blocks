@@ -19,6 +19,7 @@
 #ifndef _BAR_H
 #define _BAR_H
 
+#ifndef WAIT_ANY
 #define WAIT_ANY (-1)
 #endif
 
