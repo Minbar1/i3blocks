@@ -1,2 +1,9 @@
 i3blocks
 i3blocks.1
+GPATH
+GRTAGS
+GTAGS
+.clang*
+.dir-locals.el
+test/
+
