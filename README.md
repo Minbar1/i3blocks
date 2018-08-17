@@ -92,7 +92,7 @@ common distributions as `pandoc`.
           status_command     i3blocks -c ~/.config/i3/i3blocks.conf
         }
 
-  * For customization, copy the default i3blocks.conf into ~/.cofig/i3/i3blocks.conf
+  * For customization, copy the default i3blocks.conf into ~/.config/i3/i3blocks.conf
     (e.g. `cp /usr/local/etc/i3blocks.conf ~/.config/i3/i3blocks.conf`)
   * Restart i3 (e.g. `i3-msg restart`)
 
