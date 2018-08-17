@@ -79,9 +79,6 @@ setup_timer(struct bar *bar)
 #if defined(__FreeBSD__)
 	EV_SET(&timer_event, 0x01, EVFILT_TIMER, EV_ADD, NOTE_SECONDS,
 				 sleeptime, NULL);
-#elif defined(__OpenBSD__)
-	EV_SET(&timer_event, 0x01, EVFILT_TIMER, EV_ADD, 0, sleeptime * 1000,
-					NULL);
 #endif
 
 	if (kevent(kqueue_fd, &timer_event, 1, NULL, 0 , NULL) < 0){
