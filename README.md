@@ -47,14 +47,17 @@ You can use your own scripts, or the
 [ones](https://github.com/Minbar1/i3blocks/tree/master/scripts) provided with
 i3blocks. Feel free to contribute and improve them!
 
-The default config will look like this:
+A sample of how can i3blocks look like is here:
 
 ![](https://image.ibb.co/jd68Vz/i3blocks_freebsd.png)
 
 The scripts provided by default may use external tools:
 
-  * `mpstat` (often provided by the *sysstat* package) used by `cpu_usage`.
   * `acpi` (often provided by a package of the same name) used by `battery`.
+  * `yad` (often provided by a package of the same name) used by `calendar`.
+  * `pidof` (often provided by a package of the same name) used by `mocp`.
+  * `freecolor`(often provided by a package of the same name) used by `memory`.
+  * `Font Awesome` for icons.
 
 ## Documentation
 
