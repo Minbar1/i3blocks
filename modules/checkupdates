@@ -1,0 +1,13 @@
+#!/bin/sh
+# Copyright (C) 2018 Minbari
+# Check for available ports
+
+prtmast=$(portmaster -L | tail -n 1 | cut -d " " -f2)
+
+if [ $prtmast -gt 0 ]; then
+    echo "${prtmast}"
+    echo " "
+  else
+    echo "0"
+fi
+
