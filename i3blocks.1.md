@@ -23,7 +23,6 @@ interval for user scripts.
         2. ~/.i3blocks.conf
         3. /etc/xdg/i3blocks/config (or $XDG_CONFIG_DIRS/i3blocks/config if set)
         4. /etc/i3blocks.conf
-	5. /usr/local/etc/i3blocks.conf
 
 -v
 :   Log level. This option is cumulative. By default, error messages are
