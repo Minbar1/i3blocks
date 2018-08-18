@@ -1,0 +1,17 @@
+#!/bin/sh
+# Copyright (C) 2018 Minbari
+# Display keyboard layout with the help of xkb-switch
+
+layout=$(xkb-switch -p | cut -c 1-2)
+
+
+case $layout in
+   us) echo "US"
+       ;;
+   ro) echo "RO"
+       ;;
+   fr) echo "FR"
+       ;;
+   de) echo "DE"
+      ;;
+esac
