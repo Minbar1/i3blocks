@@ -1,0 +1,75 @@
+#!/bin/sh
+# Copyright (C) 2018 Minbari
+
+colors0="#e60000"
+colors1="#ff9900"
+colors2="#ffff00"
+colors3="#99ff33"
+colors4="#66ffff"
+unknown_color="#00cccc"
+pictograme="■"
+
+Blife=$(sysctl hw.acpi.battery.life | cut -d " " -f2)
+BState=$(sysctl hw.acpi.battery.state | cut -d " " -f2)
+Btime=$(sysctl hw.acpi.battery.time | cut -d " " -f2)
+
+
+if [ $Blife -le 100 -a $Blife -gt 80 ]; then
+     symbol=""  
+elif [ $Blife -le 80 -a $Blife -gt 60 ]; then
+     symbol=""
+elif [ $Blife -le 60 -a $Blife -gt 40 ]; then
+     symbol=""
+elif [ $Blife -le 40 -a $Blife -gt 20 ]; then
+     symbol=""
+elif [ $Blife -le 20 -a $Blife -gt 2 ]; then
+     symbol=""
+fi
+
+
+if [ "$BState" -eq 0 ]; then
+     symbol="<sup>  </sup>$symbol"
+elif [ "$BState" -eq 2 ]; then
+     symbol="<sup>  </sup>$symbol"
+else [ "$BState" -eq 1] 
+     symbol="<sup>  </sup>$symbol"
+fi     
+
+case $BState in
+ 2) # Charging state
+      if [ $Blife -gt 2 -a $Blife -le 20 ]; then
+         color="$colors0"
+      elif [ $Blife -gt 20 -a $Blife -le 40 ]; then
+         color="$colors1"
+      elif [ $Blife -gt 40 -a $Blife -le 60 ]; then
+         color="$colors2"
+      elif [ $Blife -gt 60 -a $Blife -le 80 ]; then
+         color="$colors3"
+      elif [ $Blife -gt 80 -a $Blife -le 100 ] ; then
+         color="$colors4"
+      fi
+      ;;
+ 0) # High state
+         color="$unknown_color"
+      ;;
+ 1) # Discharging state 
+      if [ $Blife -le 100 -a $Blife -gt 80 ]; then
+         color="$colors4"
+      elif [ $Blife -le 80 -a $Blife -gt 60 ]; then
+         color="$colors3"
+      elif [ $Blife -le 60 -a $Blife -gt 40 ]; then
+         color="$colors2"
+      elif [ $Blife -le 40 -a $Blife -gt 20 ]; then
+         color="$colors1"
+      elif [ $Blife -le 20 -a $Blife -gt 2 ]; then
+         color="$colors0"
+      fi
+      ;;
+  *)
+  ;;
+esac
+
+if [ "${BLOCK_BUTTON}" -eq 1 ]; then 
+    echo "$Bstate <span foreground=\"$color\">$Blife% ($Btime min)</span>"
+fi
+echo "<span foreground=\"$color\">$symbol</span>" 
