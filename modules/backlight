@@ -1,0 +1,22 @@
+#!/bin/sh
+# Copyright (C) 2018 Minbari
+# intel backlight control with left & right mouse click
+
+
+# Left click
+if [ "${BLOCK_BUTTON}" -eq 1 ]; then
+    $(intel_backlight incr 5)
+# Right click    
+elif [ "${BLOCK_BUTTON}" -eq 3 ]; then
+    $(intel_backlight decr 5)
+fi
+
+IBL=$(intel_backlight  | tail -n 1 | cut -c26-29 | tr -d ':%' | sed 's/[a-zA-Z]//g')
+
+if [ "${IBL}" -le 100 ]; then
+    echo "${IBL}%"
+    echo " "
+elif [ "${IBL}" -ge 1 ]; then
+    echo "${IBL}%"
+    echo " "
+fi
