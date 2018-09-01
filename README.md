@@ -49,7 +49,7 @@ i3blocks. Feel free to contribute and improve them!
 
 A sample of how can i3blocks look like is here:
 
-![](https://image.ibb.co/jd68Vz/i3blocks_freebsd.png)
+![](https://image.ibb.co/niXznz/i3blocks_freebsd.png)
 
 The scripts provided by default may use external tools:
 
