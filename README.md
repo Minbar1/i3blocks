@@ -77,7 +77,7 @@ i3blocks may already be packaged for your distribution:
   * Debian: [i3blocks](https://packages.debian.org/i3blocks) and Ubuntu: [i3blocks](http://packages.ubuntu.com/i3blocks)
 
 A FreeBSD port can be found here:
-  * FreeBSD [i3blocks](https://github.com/Minbar1/freebsd-ports/tree/master/x11/i3blocks)
+  * FreeBSD [i3blocks](https://www.freshports.org/x11/i3blocks)
 
 You may also install i3blocks from source:
 
