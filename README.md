@@ -83,8 +83,8 @@ You may also install i3blocks from source:
 
     $ git clone git://github.com/Minbar1/i3blocks
     $ cd i3blocks
-    $ make clean debug # or make clean all
-    # make install
+    $ gmake clean debug # or make clean all
+    # gmake install
 
 Note: the generation of the manpage in Linux requires the `pandoc` utility, packaged in
 common distributions as `pandoc`.
